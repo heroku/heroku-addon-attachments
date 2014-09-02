@@ -64,54 +64,152 @@ module Heroku::Command
       end
     end
 
-    # addons:add ADDON
+    # addons:create ADDON
     #
-    # install an addon
+    # create an addon resource
+    #
+    # -c, --config CONFIG # config prefix to use with resource
+    # -f, --force         # overwrite existing addon resource with same config
+    #
+    def create
+      hputs("!!FAKE!!")
+
+      addon = args.shift
+      raise CommandFailed.new("Missing add-on name") if addon.nil? || %w{--fork --follow --rollback}.include?(addon)
+      #config = parse_options(args)
+      service, plan = addon.split(':')
+
+      action("Creating #{addon} on #{app}") {}
+      resource = {
+        'config'  => options[:config] || 'DATABASE',
+        'name'    => "#{service}/red-zinc-4159"
+      }
+      action("Adding #{resource['name']} as #{resource['config']} to #{app}") {}
+      action("Setting #{resource['config']}_URL and restarting #{app}") do
+        @status = "v3"
+      end
+
+      #configure_addon('Creating') do |addon, config|
+      #end
+    end
+
+    # addons:add RESOURCE
+    #
+    # add addon resource to an app
+    #
+    # -c, --config CONFIG # config prefix to use with resource
+    # -f, --force         # overwrite existing addon resource with same config
     #
     def add
-      configure_addon('Adding') do |addon, config|
-        heroku.install_addon(app, addon, config)
+      hputs("!!FAKE!!")
+
+      resource = args.shift
+      raise CommandFailed.new("Missing resource name") if resource.nil?
+      service, identifier = resource.split("/")
+
+      resource = {
+        'config'  => options[:config] || identifier.gsub('-','_').upcase,
+        'name'    => resource
+      }
+      action("Adding #{resource['name']} as #{resource['config']} to #{app}") {}
+      action("Setting #{resource['config']}_URL and restarting #{app}") do
+        @status = "v4"
       end
     end
 
-    # addons:upgrade ADDON
+    # addons:upgrade RESOURCE ADDON
     #
-    # upgrade an existing addon
+    # upgrade an existing addon resource
     #
     def upgrade
-      configure_addon('Upgrading to') do |addon, config|
-        heroku.upgrade_addon(app, addon, config)
-      end
+      hputs("!!FAKE!!")
+
+      resource = args.shift
+      raise CommandFailed.new("Missing resource name") if resource.nil?
+      service, identifier = resource.split("/")
+
+      addon = args.shift
+      raise CommandFailed.new("Missing add-on name") if addon.nil?
+      #config = parse_options(args)
+      service, plan = addon.split(':')
+
+      resource = {
+        'config'  => options[:config] || identifier.gsub('-','_').upcase,
+        'name'    => resource
+      }
+
+      action("Upgrading #{resource['name']} to #{addon}") {}
     end
 
-    # addons:downgrade ADDON
+    # addons:downgrade RESOURCE
     #
-    # downgrade an existing addon
+    # downgrade an existing addon resource
     #
     def downgrade
-      configure_addon('Downgrading to') do |addon, config|
-        heroku.upgrade_addon(app, addon, config)
+      hputs("!!FAKE!!")
+
+      resource = args.shift
+      raise CommandFailed.new("Missing resource name") if resource.nil?
+      service, identifier = resource.split("/")
+
+      addon = args.shift
+      raise CommandFailed.new("Missing add-on name") if addon.nil?
+      #config = parse_options(args)
+      service, plan = addon.split(':')
+
+      resource = {
+        'config'  => options[:config] || identifier.gsub('-','_').upcase,
+        'name'    => resource
+      }
+
+      action("Downgrading #{resource['name']} to #{addon}") {}
+    end
+
+    # addons:remove RESOURCE
+    #
+    # remove addon resource from an app
+    #
+    # -c, --config CONFIG # config prefix for resource to remove
+    #
+    def remove
+      hputs("!!FAKE!!")
+
+      resource = args.shift
+      raise CommandFailed.new("Missing resource name") if resource.nil?
+      service, identifier = resource.split("/")
+
+      resource = {
+        'config'  => options[:config] || identifier.gsub('-','_').upcase,
+        'name'    => resource
+      }
+      action("Removing #{resource['name']} as #{resource['config']} from #{app}") {}
+      action("Unsetting #{resource['config']}_URL and restarting #{app}") do
+        @status = "v5"
       end
     end
 
-    # addons:remove ADDON1 [ADDON2 ...]
+    # addons:destroy RESOURCE1 [RESOURCE2 ...]
     #
-    # uninstall one or more addons
+    # destroy one or more addon resources
     #
-    def remove
+    def destroy
+      hputs("!!FAKE!!")
+
+      resource = args.shift
+      raise CommandFailed.new("Missing resource name") if resource.nil?
+      service, identifier = resource.split("/")
+
       return unless confirm_command
 
-      args.each do |name|
-        messages = nil
-        if name.start_with? "HEROKU_POSTGRESQL_"
-          name = name.chomp("_URL").freeze
-        end
-        action("Removing #{name} on #{app}") do
-          messages = addon_run { heroku.uninstall_addon(app, name, :confirm => app) }
-        end
-        display(messages[:attachment]) if messages[:attachment]
-        display(messages[:message]) if messages[:message]
+      resource = {
+        'config'  => options[:config] || identifier.gsub('-','_').upcase,
+        'name'    => resource
+      }
+      action("Removing #{resource['name']} as #{resource['config']} from #{app}") {}
+      action("Unsetting #{resource['config']}_URL and restarting #{app}") do
+        @status = "v6"
       end
+      action("Destroying #{resource['name']}") {}
     end
 
     # addons:docs ADDON
