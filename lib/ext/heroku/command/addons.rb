@@ -72,25 +72,35 @@ module Heroku::Command
     # -f, --force         # overwrite existing addon resource with same config
     #
     def create
-      hputs("!!FAKE!!")
-
       addon = args.shift
       raise CommandFailed.new("Missing add-on name") if addon.nil? || %w{--fork --follow --rollback}.include?(addon)
-      #config = parse_options(args)
-      service, plan = addon.split(':')
+      config = parse_options(args)
 
-      action("Creating #{addon} on #{app}") {}
-      resource = {
-        'config'  => options[:config] || 'DATABASE',
-        'name'    => "#{service}/red-zinc-4159"
-      }
-      action("Adding #{resource['name']} as #{resource['config']} to #{app}") {}
-      action("Setting #{resource['config']}_URL and restarting #{app}") do
+      resource = action("Creating #{addon} on #{app}") do
+        api.request(
+          :body     => json_encode({
+            "addon"     => addon,
+            "app_name"  => app,
+            "config"    => config
+            #"config_var" => options[:config]
+          }),
+          :headers  => { "Accept" => "application/vnd.heroku+json; version=edge" },
+          :method   => "POST",
+          :path     => "/resources"
+        ).body
+      end
+
+      identifier = "#{resource['type'].split(':',2).first}/#{resource['name']}"
+      config = options[:config] || identifier.split('/').last.gsub('-','_').upcase
+
+      action("? Adding #{identifier} as #{config} to #{app}") {}
+      action("? Setting #{config}_URL and restarting #{app}") do
         @status = "v3"
       end
 
-      #configure_addon('Creating') do |addon, config|
-      #end
+      display resource['provider_data']['message'] unless resource['provider_data']['message'].strip == ""
+
+      display("Use `heroku addons:docs #{addon.split(':').first}` to view documentation.")
     end
 
     # addons:add RESOURCE
@@ -101,18 +111,12 @@ module Heroku::Command
     # -f, --force         # overwrite existing addon resource with same config
     #
     def add
-      hputs("!!FAKE!!")
-
       resource = args.shift
       raise CommandFailed.new("Missing resource name") if resource.nil?
-      service, identifier = resource.split("/")
 
-      resource = {
-        'config'  => options[:config] || identifier.gsub('-','_').upcase,
-        'name'    => resource
-      }
-      action("Adding #{resource['name']} as #{resource['config']} to #{app}") {}
-      action("Setting #{resource['config']}_URL and restarting #{app}") do
+      config = options[:config] || resource.split('/').last.gsub('-','_').upcase
+      action("? Adding #{resource} as #{config} to #{app}") {}
+      action("? Setting #{config}_URL and restarting #{app}") do
         @status = "v4"
       end
     end
@@ -122,23 +126,14 @@ module Heroku::Command
     # upgrade an existing addon resource
     #
     def upgrade
-      hputs("!!FAKE!!")
-
       resource = args.shift
       raise CommandFailed.new("Missing resource name") if resource.nil?
-      service, identifier = resource.split("/")
 
       addon = args.shift
       raise CommandFailed.new("Missing add-on name") if addon.nil?
       #config = parse_options(args)
-      service, plan = addon.split(':')
 
-      resource = {
-        'config'  => options[:config] || identifier.gsub('-','_').upcase,
-        'name'    => resource
-      }
-
-      action("Upgrading #{resource['name']} to #{addon}") {}
+      action("? Upgrading #{resource} to #{addon}") {}
     end
 
     # addons:downgrade RESOURCE
@@ -146,23 +141,14 @@ module Heroku::Command
     # downgrade an existing addon resource
     #
     def downgrade
-      hputs("!!FAKE!!")
-
       resource = args.shift
       raise CommandFailed.new("Missing resource name") if resource.nil?
-      service, identifier = resource.split("/")
 
       addon = args.shift
       raise CommandFailed.new("Missing add-on name") if addon.nil?
       #config = parse_options(args)
-      service, plan = addon.split(':')
 
-      resource = {
-        'config'  => options[:config] || identifier.gsub('-','_').upcase,
-        'name'    => resource
-      }
-
-      action("Downgrading #{resource['name']} to #{addon}") {}
+      action("? Downgrading #{resource} to #{addon}") {}
     end
 
     # addons:remove RESOURCE
@@ -172,18 +158,12 @@ module Heroku::Command
     # -c, --config CONFIG # config prefix for resource to remove
     #
     def remove
-      hputs("!!FAKE!!")
-
       resource = args.shift
       raise CommandFailed.new("Missing resource name") if resource.nil?
-      service, identifier = resource.split("/")
 
-      resource = {
-        'config'  => options[:config] || identifier.gsub('-','_').upcase,
-        'name'    => resource
-      }
-      action("Removing #{resource['name']} as #{resource['config']} from #{app}") {}
-      action("Unsetting #{resource['config']}_URL and restarting #{app}") do
+      config = options[:config] || identifier.split('/').last.gsub('-','_').upcase
+      action("? Removing #{resource} as #{config} from #{app}") {}
+      action("? Unsetting #{config}_URL and restarting #{app}") do
         @status = "v5"
       end
     end
@@ -193,23 +173,23 @@ module Heroku::Command
     # destroy one or more addon resources
     #
     def destroy
-      hputs("!!FAKE!!")
-
       resource = args.shift
       raise CommandFailed.new("Missing resource name") if resource.nil?
-      service, identifier = resource.split("/")
 
       return unless confirm_command
 
-      resource = {
-        'config'  => options[:config] || identifier.gsub('-','_').upcase,
-        'name'    => resource
-      }
-      action("Removing #{resource['name']} as #{resource['config']} from #{app}") {}
-      action("Unsetting #{resource['config']}_URL and restarting #{app}") do
+      config = options[:config] || resource.split('/').last.gsub('-','_').upcase
+      action("? Removing #{resource} as #{config} from #{app}") {}
+      action("? Unsetting #{config}_URL and restarting #{app}") do
         @status = "v6"
       end
-      action("Destroying #{resource['name']}") {}
+      action("Destroying #{resource} on #{app}") do
+        api.request(
+          :headers  => { "Accept" => "application/vnd.heroku+json; version=edge" },
+          :method   => "DELETE",
+          :path     => "/resources/#{resource.split('/').last}"
+        )
+      end
     end
 
     # addons:docs ADDON
