@@ -68,8 +68,8 @@ module Heroku::Command
     #
     # create an addon resource
     #
-    # -c, --config CONFIG # config prefix to use with resource
-    # -f, --force         # overwrite existing addon resource with same config
+    # -c, --config-var CONFIG_VAR # config prefix to use with resource
+    # -f, --force                 # overwrite existing addon resource with same config
     #
     def create
       addon = args.shift
@@ -82,7 +82,7 @@ module Heroku::Command
             "addon"     => addon,
             "app_name"  => app,
             "config"    => config
-            #"config_var" => options[:config]
+            #"config_var" => options[:config_var]
           }),
           :headers  => { "Accept" => "application/vnd.heroku+json; version=edge" },
           :method   => "POST",
@@ -91,10 +91,10 @@ module Heroku::Command
       end
 
       identifier = "#{resource['type'].split(':',2).first}/#{resource['name']}"
-      config = options[:config] || identifier.split('/').last.gsub('-','_').upcase
+      config_var = options[:config_var] || identifier.split('/').last.gsub('-','_').upcase
 
-      action("? Adding #{identifier} as #{config} to #{app}") {}
-      action("? Setting #{config}_URL and restarting #{app}") do
+      action("? Adding #{identifier} as #{config_var} to #{app}") {}
+      action("? Setting #{config_var}_URL and restarting #{app}") do
         @status = "v3"
       end
 
@@ -107,16 +107,16 @@ module Heroku::Command
     #
     # add addon resource to an app
     #
-    # -c, --config CONFIG # config prefix to use with resource
-    # -f, --force         # overwrite existing addon resource with same config
+    # -c, --config-var CONFIG_VAR # config prefix to use with resource
+    # -f, --force                 # overwrite existing addon resource with same config
     #
     def add
       resource = args.shift
       raise CommandFailed.new("Missing resource name") if resource.nil?
 
-      config = options[:config] || resource.split('/').last.gsub('-','_').upcase
-      action("? Adding #{resource} as #{config} to #{app}") {}
-      action("? Setting #{config}_URL and restarting #{app}") do
+      config_var = options[:config_var] || resource.split('/').last.gsub('-','_').upcase
+      action("? Adding #{resource} as #{config_var} to #{app}") {}
+      action("? Setting #{config_var}_URL and restarting #{app}") do
         @status = "v4"
       end
     end
@@ -155,15 +155,15 @@ module Heroku::Command
     #
     # remove addon resource from an app
     #
-    # -c, --config CONFIG # config prefix for resource to remove
+    # -c, --config-var CONFIG_VAR # config prefix for resource to remove
     #
     def remove
       resource = args.shift
       raise CommandFailed.new("Missing resource name") if resource.nil?
 
-      config = options[:config] || identifier.split('/').last.gsub('-','_').upcase
-      action("? Removing #{resource} as #{config} from #{app}") {}
-      action("? Unsetting #{config}_URL and restarting #{app}") do
+      config_var = options[:config_var] || identifier.split('/').last.gsub('-','_').upcase
+      action("? Removing #{resource} as #{config_var} from #{app}") {}
+      action("? Unsetting #{config_var}_URL and restarting #{app}") do
         @status = "v5"
       end
     end
@@ -178,9 +178,9 @@ module Heroku::Command
 
       return unless confirm_command
 
-      config = options[:config] || resource.split('/').last.gsub('-','_').upcase
-      action("? Removing #{resource} as #{config} from #{app}") {}
-      action("? Unsetting #{config}_URL and restarting #{app}") do
+      config_var = options[:config_var] || resource.split('/').last.gsub('-','_').upcase
+      action("? Removing #{resource} as #{config_var} from #{app}") {}
+      action("? Unsetting #{config_var}_URL and restarting #{app}") do
         @status = "v6"
       end
       action("Destroying #{resource} on #{app}") do
