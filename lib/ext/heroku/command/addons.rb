@@ -93,11 +93,11 @@ module Heroku::Command
         ).body
 
       identifier = "#{resource['addon']['name'].split(':',2).first}/#{resource['name']}"
-      as = options[:as] || identifier.split('/').last.gsub('-','_').upcase
+      attachment = options[:as] || identifier.split('/').last.gsub('-','_').upcase
 
       action("Creating #{identifier}") {}
-      action("Adding #{identifier} as #{as} to #{app}") {}
-      action("Setting #{as}_URL and restarting #{app}") do
+      action("Adding #{identifier} as #{attachment} to #{app}") {}
+      action("Setting #{attachment}_URL and restarting #{app}") do
         @status = api.get_release(app, 'current').body['name']
       end
 
@@ -118,8 +118,8 @@ module Heroku::Command
       resource = options[:resource]
       raise CommandFailed.new("Missing resource name") if resource.nil?
 
-      as = options[:as] || resource.split('/').last.gsub('-','_').upcase
-      action("? Adding #{resource} as #{as} to #{app}") do
+      attachment = options[:as] || resource.split('/').last.gsub('-','_').upcase
+      action("Adding #{resource} as #{attachment} to #{app}") do
         api.request(
           :body     => json_encode({
             "force"     => options[:force],
@@ -132,7 +132,7 @@ module Heroku::Command
           :path     => "/apps/#{app}/attachments"
         ).body
       end
-      action("? Setting #{as}_URL and restarting #{app}") do
+      action("Setting #{attachment}_URL and restarting #{app}") do
         @status = api.get_release(app, 'current').body['name']
       end
     end
@@ -171,20 +171,27 @@ module Heroku::Command
       action("? Downgrading #{resource} to #{addon}") {}
     end
 
-    # addons:remove RESOURCE
+    # addons:remove
     #
-    # remove addon resource from an app
+    # remove addon resource attachment from an app
     #
     #     --as ATTACHMENT     # addon resource attachment to remove
     # -r, --resource RESOURCE # addon resource to remove
     #
     def remove
       resource = options[:resource]
-      raise CommandFailed.new("Missing resource name") if resource.nil?
+      attachment = options[:as] || resource && resource.split('/').last.gsub('-','_').upcase
+      raise CommandFailed.new("Missing attachment name") if attachment.nil?
 
-      as = options[:as] || identifier.split('/').last.gsub('-','_').upcase
-      action("? Removing #{resource} as #{as} from #{app}") {}
-      action("? Unsetting #{as}_URL and restarting #{app}") do
+      action("Removing #{resource} as #{attachment} from #{app}") do
+        api.request(
+          :expects  => 200,
+          :headers  => { "Accept" => "application/vnd.heroku+json; version=mock" },
+          :method   => :delete,
+          :path     => "/apps/#{app}/attachments/#{attachment}"
+        ).body
+      end
+      action("Unsetting #{attachment}_URL and restarting #{app}") do
         @status = api.get_release(app, 'current').body['name']
       end
     end

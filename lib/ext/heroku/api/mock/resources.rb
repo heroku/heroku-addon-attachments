@@ -47,7 +47,6 @@ module Heroku
           mock_data[:resources] << resource_data
 
           attachment = request_params[:body]['attachment']['name'] || resource.gsub('-','_').upcase
-          mock_data[:config_vars][app]["#{attachment}_URL"] = "@#{addon}/#{resource}"
 
           mock_data[:attachments][app] ||= []
           mock_data[:attachments][app] << {
@@ -57,6 +56,7 @@ module Heroku
             'name' => attachment
           }
 
+          mock_data[:config_vars][app]["#{attachment}_URL"] = "@#{addon}/#{resource}"
           add_mock_release(mock_data, app, {'descr' => "Add-on resource add #{addon}/#{resource}"})
 
           {
