@@ -28,6 +28,7 @@ module Heroku
             :maintenance_mode => [],
             :ps               => {},
             :releases         => {},
+            :resources        => [],
             :user             => {}
           }
           mock_data
@@ -56,6 +57,14 @@ module Heroku
         #{:expects => 200, :method => :get, :path => "/v1/user/info"},
         #{:status => 200}
       #)
+
+      def self.get_mock_app_attachment(mock_data, app, attachment)
+        mock_data[:attachments][app].detect {|attachment_data| attachment_data['name'] == attachment}
+      end
+
+      def self.get_mock_resource(mock_data, resource)
+        mock_data[:resource].detect {|resource_data| resource_data['name'] == resource}
+      end
 
     end
   end

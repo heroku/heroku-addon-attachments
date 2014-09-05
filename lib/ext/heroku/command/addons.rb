@@ -68,37 +68,40 @@ module Heroku::Command
     #
     # create an addon resource
     #
-    # -c, --config-var CONFIG_VAR # config prefix to use with resource
-    # -f, --force                 # overwrite existing addon resource with same config
+    #     --as ATTACHMENT     # name for this attachment to addon resource
+    # -f, --force             # overwrite existing addon resource with same config
+    # -r, --resource RESOURCE # name for this attachment to addon resource
     #
     def create
       addon = args.shift
       raise CommandFailed.new("Missing add-on name") if addon.nil? || %w{--fork --follow --rollback}.include?(addon)
       config = parse_options(args)
 
-      resource = action("Creating #{addon} on #{app}") do
-        api.request(
+        resource = api.request(
           :body     => json_encode({
-            "addon"     => addon,
-            "app_name"  => app,
-            "config"    => config
-            #"config_var" => options[:config_var]
+            "addon"       => { "name" => addon },
+            "app"         => { "name" => app },
+            "attachment"  => { "name" => options[:as] },
+            "config"      => config,
+            "force"       => options[:force],
+            "name"        => options[:resource]
           }),
-          :headers  => { "Accept" => "application/vnd.heroku+json; version=edge" },
-          :method   => "POST",
+          :expects  => 200,
+          :headers  => { "Accept" => "application/vnd.heroku+json; version=mock" },
+          :method   => :post,
           :path     => "/resources"
         ).body
+
+      identifier = "#{resource['addon']['name'].split(':',2).first}/#{resource['name']}"
+      as = options[:as] || identifier.split('/').last.gsub('-','_').upcase
+
+      action("Creating #{identifier}") {}
+      action("Adding #{identifier} as #{as} to #{app}") {}
+      action("Setting #{as}_URL and restarting #{app}") do
+        @status = api.get_release(app, 'current').body['name']
       end
 
-      identifier = "#{resource['type'].split(':',2).first}/#{resource['name']}"
-      config_var = options[:config_var] || identifier.split('/').last.gsub('-','_').upcase
-
-      action("? Adding #{identifier} as #{config_var} to #{app}") {}
-      action("? Setting #{config_var}_URL and restarting #{app}") do
-        @status = "v3"
-      end
-
-      display resource['provider_data']['message'] unless resource['provider_data']['message'].strip == ""
+      #display resource['provider_data']['message'] unless resource['provider_data']['message'].strip == ""
 
       display("Use `heroku addons:docs #{addon.split(':').first}` to view documentation.")
     end
@@ -107,26 +110,41 @@ module Heroku::Command
     #
     # add addon resource to an app
     #
-    # -c, --config-var CONFIG_VAR # config prefix to use with resource
-    # -f, --force                 # overwrite existing addon resource with same config
+    #     --as ATTACHMENT     # name for this attachment to addon resource
+    # -f, --force             # overwrite existing addon resource with same config
+    # -r, --resource RESOURCE # addon resource to add
     #
     def add
-      resource = args.shift
+      resource = options[:resource]
       raise CommandFailed.new("Missing resource name") if resource.nil?
 
-      config_var = options[:config_var] || resource.split('/').last.gsub('-','_').upcase
-      action("? Adding #{resource} as #{config_var} to #{app}") {}
-      action("? Setting #{config_var}_URL and restarting #{app}") do
-        @status = "v4"
+      as = options[:as] || resource.split('/').last.gsub('-','_').upcase
+      action("? Adding #{resource} as #{as} to #{app}") do
+        api.request(
+          :body     => json_encode({
+            "force"     => options[:force],
+            "name"      => options[:as],
+            "resource"  => { "name" => resource }
+          }),
+          :expects  => 200,
+          :headers  => { "Accept" => "application/vnd.heroku+json; version=mock" },
+          :method   => :post,
+          :path     => "/apps/#{app}/attachments"
+        ).body
+      end
+      action("? Setting #{as}_URL and restarting #{app}") do
+        @status = api.get_release(app, 'current').body['name']
       end
     end
 
-    # addons:upgrade RESOURCE ADDON
+    # addons:upgrade ADDON
     #
-    # upgrade an existing addon resource
+    # upgrade an existing addon resource to ADDON plan
+    #
+    # -r, --resource RESOURCE # addon resource to upgrade
     #
     def upgrade
-      resource = args.shift
+      resource = options[:resource]
       raise CommandFailed.new("Missing resource name") if resource.nil?
 
       addon = args.shift
@@ -138,10 +156,12 @@ module Heroku::Command
 
     # addons:downgrade RESOURCE
     #
-    # downgrade an existing addon resource
+    # downgrade an existing addon resource to ADDON plan
+    #
+    # -r, --resource RESOURCE # addon resource to downgrade
     #
     def downgrade
-      resource = args.shift
+      resource = options[:resource]
       raise CommandFailed.new("Missing resource name") if resource.nil?
 
       addon = args.shift
@@ -155,38 +175,42 @@ module Heroku::Command
     #
     # remove addon resource from an app
     #
-    # -c, --config-var CONFIG_VAR # config prefix for resource to remove
+    #     --as ATTACHMENT     # addon resource attachment to remove
+    # -r, --resource RESOURCE # addon resource to remove
     #
     def remove
-      resource = args.shift
+      resource = options[:resource]
       raise CommandFailed.new("Missing resource name") if resource.nil?
 
-      config_var = options[:config_var] || identifier.split('/').last.gsub('-','_').upcase
-      action("? Removing #{resource} as #{config_var} from #{app}") {}
-      action("? Unsetting #{config_var}_URL and restarting #{app}") do
-        @status = "v5"
+      as = options[:as] || identifier.split('/').last.gsub('-','_').upcase
+      action("? Removing #{resource} as #{as} from #{app}") {}
+      action("? Unsetting #{as}_URL and restarting #{app}") do
+        @status = api.get_release(app, 'current').body['name']
       end
     end
 
-    # addons:destroy RESOURCE1 [RESOURCE2 ...]
+    # addons:destroy
     #
-    # destroy one or more addon resources
+    # destroy an addon resources
+    #
+    # -r, --resource RESOURCE # addon resource to remove
     #
     def destroy
-      resource = args.shift
+      resource = options[:resource]
       raise CommandFailed.new("Missing resource name") if resource.nil?
 
       return unless confirm_command
 
-      config_var = options[:config_var] || resource.split('/').last.gsub('-','_').upcase
-      action("? Removing #{resource} as #{config_var} from #{app}") {}
-      action("? Unsetting #{config_var}_URL and restarting #{app}") do
-        @status = "v6"
+      as = options[:as] || resource.split('/').last.gsub('-','_').upcase
+      action("Removing #{resource} as #{as} from #{app}") {}
+      action("Unsetting #{as}_URL and restarting #{app}") do
+        @status = api.get_release(app, 'current').body['name']
       end
       action("Destroying #{resource} on #{app}") do
         api.request(
-          :headers  => { "Accept" => "application/vnd.heroku+json; version=edge" },
-          :method   => "DELETE",
+          :expects  => 200,
+          :headers  => { "Accept" => "application/vnd.heroku+json; version=mock" },
+          :method   => :delete,
           :path     => "/resources/#{resource.split('/').last}"
         )
       end
