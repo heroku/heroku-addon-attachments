@@ -21,18 +21,18 @@ module Heroku
           end
           # setup expectations without default procs so it can be marshalled
           mock_data[@api_key] ||= {
-            :addons           => {},
-            :apps             => [],
-            :attachments      => {},
-            :collaborators    => {},
-            :config_vars      => {},
-            :domains          => {},
-            :keys             => [],
-            :maintenance_mode => [],
-            :ps               => {},
-            :releases         => {},
-            :resources        => [],
-            :user             => {}
+            :addons             => {},
+            :apps               => [],
+            :addon_attachments  => {},
+            :collaborators      => {},
+            :config_vars        => {},
+            :domains            => {},
+            :keys               => [],
+            :maintenance_mode   => [],
+            :ps                 => {},
+            :releases           => {},
+            :resources          => [],
+            :user               => {}
           }
           mock_data
         end
@@ -61,8 +61,26 @@ module Heroku
         #{:status => 200}
       #)
 
+      def self.add_mock_addon_attachmont(mock_data, app, addon, attachment_data)
+        mock_data[:addon_attachments][app] ||= []
+        mock_data[:addon_attachments][app] << {
+          'addon'       => {
+            'id'    => addon['id'],
+            'name'  => addon['name']
+          },
+          'app'         => {
+            'id'    => app['id'],
+            'name'  => app['name']
+          },
+          'created_at'  => timestamp,
+          'id'          => uuid,
+          'name'        => attachment_name,
+          'updated_at'  => timestamp
+        }.merge(attachment_data)
+      end
+
       def self.get_mock_app_attachment(mock_data, app, attachment)
-        mock_data[:attachments][app].detect {|attachment_data| attachment_data['name'] == attachment}
+        mock_data[:addon_attachments][app].detect {|attachment_data| attachment_data['name'] == attachment}
       end
 
       def self.get_mock_resource(mock_data, resource)

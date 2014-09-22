@@ -10,7 +10,7 @@ module Heroku
         app = with_mock_app(mock_data, app)
 
         {
-          :body   => MultiJson.dump(mock_data[:attachments][app] || []),
+          :body   => MultiJson.dump(mock_data[:addon_attachments][app] || []),
           :status => 200
         }
       end
@@ -20,7 +20,7 @@ module Heroku
         request_params, mock_data = parse_stub_params(params)
 
         {
-          :body   => MultiJson.dump(mock_data[:attachments].values.flatten),
+          :body   => MultiJson.dump(mock_data[:addon_attachments].values.flatten),
           :status => 200
         }
       end
@@ -33,11 +33,11 @@ module Heroku
         app = with_mock_app(mock_data, app)
 
         # FIXME: should ensure it exists or else throw not found
-        attachment_data = mock_data[:attachments][app].detect {|data| data['name'] == attachment_name}
+        attachment_data = mock_data[:addon_attachments][app].detect {|data| data['name'] == attachment_name}
 
         mock_data[:config_vars][app].delete("#{attachment_name}_URL")
         add_mock_release(mock_data, app, {'descr' => "Add-on resource remove #{attachment_name}"})
-        mock_data[:attachments][app].delete(attachment_data)
+        mock_data[:addon_attachments][app].delete(attachment_data)
 
         {
           :status => 200
@@ -52,22 +52,7 @@ module Heroku
         attachment_name = request_params[:body]['addon-attachment'] && request_params[:body]['addon-attachment']['name'] || resource.gsub('-','_').upcase
         resource = get_mock_resource(request_params[:body]['resource']['name'].split('/',2).last)
 
-        mock_data[:attachments][app] ||= []
-        attachment_data = {
-          'addon'       => {
-            'id'    => resource['id'],
-            'name'  => resource['name']
-          },
-          'app'         => {
-            'id'    => app['id'],
-            'name'  => app['name']
-          },
-          'created_at'  => timestamp,
-          'id'          => uuid,
-          'name'        => attachment_name,
-          'updated_at'  => timestamp
-        }
-        mock_data[:attachments][app['name']] << attachment_data
+        add_mock_addon_attachment(mock_data, app, resource, { 'name' => attachment_name })
 
         mock_data[:config_vars][app['name']]["#{attachment_name}_URL"] = "@#{addon}/#{resource}"
         add_mock_release(mock_data, app['name'], {'descr' => "Add-on resource add #{addon}/#{resource}"})
