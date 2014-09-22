@@ -66,6 +66,14 @@ module Heroku
         mock_data[:resource].detect {|resource_data| resource_data['name'] == resource}
       end
 
+      def self.uuid
+        uuid = ''
+        8.times   { uuid << rand(16).to_s(16) }
+        3.times   { 4.times { uuid << rand(16).to_s(16) } }
+        12.times  { uuid << rand(16).to_s(16) }
+        uuid
+      end
+
     end
   end
 end

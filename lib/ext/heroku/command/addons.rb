@@ -38,20 +38,20 @@ module Heroku::Command
       end
     end
 
-    # addons:list
+    # addons:plans
     #
-    # list all available addons
+    # list all available addon plans
     #
-    # --region REGION      # specify a region for addon availability
+    # --region REGION      # specify a region for addon plan availability
     #
     #Example:
     #
-    # $ heroku addons:list --region eu
+    # $ heroku addons:plans --region eu
     # === available
     # adept-scale:battleship, corvette...
     # adminium:enterprise, petproject...
     #
-    def list
+    def plans
       addons = heroku.addons(options)
       if addons.empty?
         display "No addons available currently"
@@ -61,6 +61,58 @@ module Heroku::Command
           partitioned_addons[key] = format_for_display(addons)
         end
         display_object(partitioned_addons)
+      end
+    end
+
+    alias_command "addons:list", "addons:plans"
+
+    # addons:attachments
+    #
+    # list addon attachments
+    #
+    def attachments
+      begin
+        # will raise if no app specified
+        attachments = api.request(
+          :expects  => 200,
+          :headers  => { "Accept" => "application/vnd.heroku+json; version=mock" },
+          :method   => :get,
+          :path     => "/apps/#{app}/addon-attachments"
+        ).body
+        if attachments.empty?
+          display("There are no addon attachments for this app.")
+        else
+          styled_header("#{app} Add-on Attachments")
+          styled_array(attachments.map do |attachment|
+            [
+              attachment['addon']['name'],
+              attachment['name']
+            ]
+          end)
+        end
+      rescue Heroku::Command::CommandFailed => error
+        if error.message =~ /No app specified/
+          attachments = api.request(
+            :expects  => 200,
+            :headers  => { "Accept" => "application/vnd.heroku+json; version=mock" },
+            :method   => :get,
+            :path     => "/addon-attachments"
+          ).body
+          if attachments.empty?
+            display("You have no addon attachments.")
+          else
+            styled_header("Add-on Attachments")
+            styled_array(attachments.map do |attachment|
+              [
+                attachment['addon']['name'],
+                attachment['app']['name'],
+                attachment['name']
+              ]
+            end)
+          end
+        else
+          raise error
+        end
       end
     end
 
