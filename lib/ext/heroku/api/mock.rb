@@ -1,3 +1,6 @@
+require("#{File.dirname(__FILE__)}/mock/addon-attachments")
+require("#{File.dirname(__FILE__)}/mock/resources")
+
 module Heroku
   class API
     module Mock
