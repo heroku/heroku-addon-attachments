@@ -108,31 +108,32 @@ module Heroku::Command
 
     # addons:add RESOURCE
     #
-    # add addon resource to an app
+    # add addon attachment from a resource to an app
     #
-    #     --as ATTACHMENT     # name for this attachment to addon resource
-    # -f, --force             # overwrite existing addon resource with same config
+    # -n, --name NAME         # name for addon attachment
+    # -f, --force             # overwrite existing addon attachment with same name
     # -r, --resource RESOURCE # addon resource to add
     #
     def add
       resource = options[:resource]
       raise CommandFailed.new("Missing resource name") if resource.nil?
 
-      attachment = options[:as] || resource.split('/').last.gsub('-','_').upcase
-      action("Adding #{resource} as #{attachment} to #{app}") do
+      attachment_name = options[:name] || resource.split('/').last.gsub('-','_').upcase
+      action("Adding #{resource} as #{attachment_name} to #{app}") do
         api.request(
           :body     => json_encode({
-            "force"     => options[:force],
-            "name"      => options[:as],
-            "resource"  => { "name" => resource }
+            "force"             => options[:force],
+            "addon_attachment"  => { "name" => options[:name] },
+            "app"               => { "name" => app },
+            "resource"          => { "name" => resource }
           }),
           :expects  => 200,
           :headers  => { "Accept" => "application/vnd.heroku+json; version=mock" },
           :method   => :post,
-          :path     => "/apps/#{app}/attachments"
+          :path     => "/addon-attachments"
         ).body
       end
-      action("Setting #{attachment}_URL and restarting #{app}") do
+      action("Setting #{attachment_name}_URL and restarting #{app}") do
         @status = api.get_release(app, 'current').body['name']
       end
     end
@@ -173,25 +174,25 @@ module Heroku::Command
 
     # addons:remove
     #
-    # remove addon resource attachment from an app
+    # remove addon attachment to a resource from an app
     #
-    #     --as ATTACHMENT     # addon resource attachment to remove
+    # -n, --name NAME         # name of addon attachment to remove
     # -r, --resource RESOURCE # addon resource to remove
     #
     def remove
       resource = options[:resource]
-      attachment = options[:as] || resource && resource.split('/').last.gsub('-','_').upcase
-      raise CommandFailed.new("Missing attachment name") if attachment.nil?
+      attachment_name = options[:name] || resource && resource.split('/').last.gsub('-','_').upcase
+      raise CommandFailed.new("Missing addon attachment name") if attachment_name.nil?
 
-      action("Removing #{resource} as #{attachment} from #{app}") do
+      action("Removing #{resource} as #{attachment_name} from #{app}") do
         api.request(
           :expects  => 200,
           :headers  => { "Accept" => "application/vnd.heroku+json; version=mock" },
           :method   => :delete,
-          :path     => "/apps/#{app}/attachments/#{attachment}"
+          :path     => "/apps/#{app}/addon-attachments/#{attachment_name}"
         ).body
       end
-      action("Unsetting #{attachment}_URL and restarting #{app}") do
+      action("Unsetting #{attachment_name}_URL and restarting #{app}") do
         @status = api.get_release(app, 'current').body['name']
       end
     end
