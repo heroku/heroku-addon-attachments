@@ -62,6 +62,7 @@ module Heroku
       #)
 
       def self.add_mock_addon_attachmont(mock_data, app, addon, attachment_data)
+        attachment_name = attachment_data['name'] || addon['name'].split(':').first)
         mock_data[:addon_attachments][app] ||= []
         mock_data[:addon_attachments][app] << {
           'addon'       => {
@@ -77,6 +78,7 @@ module Heroku
           'name'        => attachment_name,
           'updated_at'  => timestamp
         }.merge(attachment_data)
+        mock_data[:config_vars][app['name']]["#{attachment_name.gsub('-','_').upcase}_URL"] = "@#{addon['name']}"
       end
 
       def self.get_mock_app_attachment(mock_data, app, attachment)
@@ -85,6 +87,29 @@ module Heroku
 
       def self.get_mock_resource(mock_data, resource)
         mock_data[:resource].detect {|resource_data| resource_data['name'] == resource}
+      end
+
+      def self.addon_name(addon_service)
+        colors = %w(
+          amber aqua black blue bronze brown charcoal crimson cyan gray
+          green indigo ivory jade maroon mauve navy olive onyx orange
+          pink purple red rose teal violet white yellow
+        )
+        elements = %w(
+          hydrogen helium lithium beryllium boron carbon nitrogen flourine neon sodium
+          magnesium aluminium silicon phosphorus sulfur chlorine argon potassium calcium scandium
+          titanium vanadium chromium manganese iron cobalt nickel copper zinc gallium
+          germanium arsenic
+        )
+
+        addon_name = "#{addon_service}/"
+        addon_name << [
+          colors.sample,
+          elements.sample,
+          [rand(10), rand(10), rand(10), rand(10)].map {|x| x.to_s}.join
+        ].join("-")
+
+          addon_name
       end
 
       def self.uuid

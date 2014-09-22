@@ -52,12 +52,10 @@ module Heroku
         request_params, mock_data = parse_stub_params(params)
 
         with_mock_app(request_params[:body]['app']['name']) do |app|
-          attachment_name = request_params[:body]['addon-attachment'] && request_params[:body]['addon-attachment']['name'] || resource.gsub('-','_').upcase
+          attachment_name = request_params[:body]['addon-attachment'] && request_params[:body]['addon-attachment']['name'] || resource
           resource = get_mock_resource(request_params[:body]['resource']['name'].split('/',2).last)
 
-          add_mock_addon_attachment(mock_data, app, resource, { 'name' => attachment_name })
-
-          mock_data[:config_vars][app['name']]["#{attachment_name}_URL"] = "@#{addon}/#{resource}"
+          add_mock_addon_attachment(mock_data, app, resource, request_params[:body]['addon-attachment'])
           add_mock_release(mock_data, app['name'], {'descr' => "Add-on resource add #{addon}/#{resource}"})
 
           {
