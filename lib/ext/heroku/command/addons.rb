@@ -75,7 +75,7 @@ module Heroku::Command
         # will raise if no app specified
         attachments = api.request(
           :expects  => 200,
-          :headers  => { "Accept" => "application/vnd.heroku+json; version=mock" },
+          :headers  => { "Accept" => "application/vnd.heroku+json; version=edge" },
           :method   => :get,
           :path     => "/apps/#{app}/addon-attachments"
         ).body
@@ -85,8 +85,8 @@ module Heroku::Command
           styled_header("#{app} Add-on Attachments")
           styled_array(attachments.map do |attachment|
             [
-              attachment['addon']['name'],
-              attachment['name']
+              attachment['name'],
+              "@#{attachment['addon']['name']}"
             ]
           end)
         end
@@ -94,7 +94,7 @@ module Heroku::Command
         if error.message =~ /No app specified/
           attachments = api.request(
             :expects  => 200,
-            :headers  => { "Accept" => "application/vnd.heroku+json; version=mock" },
+            :headers  => { "Accept" => "application/vnd.heroku+json; version=edge" },
             :method   => :get,
             :path     => "/addon-attachments"
           ).body
@@ -104,11 +104,11 @@ module Heroku::Command
             styled_header("Add-on Attachments")
             styled_array(attachments.map do |attachment|
               [
-                attachment['addon']['name'],
                 attachment['app']['name'],
-                attachment['name']
+                attachment['name'],
+                "@#{attachment['addon']['name']}"
               ]
-            end)
+            end.sort)
           end
         else
           raise error
@@ -131,17 +131,16 @@ module Heroku::Command
 
         resource = api.request(
           :body     => json_encode({
-            "addon"       => { "name" => addon },
-            "app"         => { "name" => app },
             "attachment"  => { "name" => options[:as] },
             "config"      => config,
             "force"       => options[:force],
-            "name"        => options[:resource]
+            "name"        => options[:resource],
+            "plan"        => { "name" => addon }
           }),
           :expects  => 200,
-          :headers  => { "Accept" => "application/vnd.heroku+json; version=mock" },
+          :headers  => { "Accept" => "application/vnd.heroku+json; version=edge" },
           :method   => :post,
-          :path     => "/resources"
+          :path     => "/apps/#{app}/addons"
         ).body
 
       identifier = "#{resource['addon']['name'].split(':',2).first}/#{resource['name']}"
@@ -167,20 +166,20 @@ module Heroku::Command
     # -r, --resource RESOURCE # addon resource to add
     #
     def add
-      resource = options[:resource]
+      resource = args.shift
       raise CommandFailed.new("Missing resource name") if resource.nil?
 
       attachment_name = options[:name] || resource.split('/').last.gsub('-','_').upcase
       action("Adding #{resource} as #{attachment_name} to #{app}") do
         api.request(
           :body     => json_encode({
-            "force"             => options[:force],
-            "addon_attachment"  => { "name" => options[:name] },
-            "app"               => { "name" => app },
-            "resource"          => { "name" => resource }
+            "app"     => app,
+            "addon"   => resource,
+            "confirm" => options[:force],
+            "name"    => options[:name]
           }),
           :expects  => 200,
-          :headers  => { "Accept" => "application/vnd.heroku+json; version=mock" },
+          :headers  => { "Accept" => "application/vnd.heroku+json; version=edge" },
           :method   => :post,
           :path     => "/addon-attachments"
         ).body
@@ -239,7 +238,7 @@ module Heroku::Command
       action("Removing #{resource} as #{attachment_name} from #{app}") do
         api.request(
           :expects  => 200,
-          :headers  => { "Accept" => "application/vnd.heroku+json; version=mock" },
+          :headers  => { "Accept" => "application/vnd.heroku+json; version=edge" },
           :method   => :delete,
           :path     => "/apps/#{app}/addon-attachments/#{attachment_name}"
         ).body
@@ -269,7 +268,7 @@ module Heroku::Command
       action("Destroying #{resource} on #{app}") do
         api.request(
           :expects  => 200,
-          :headers  => { "Accept" => "application/vnd.heroku+json; version=mock" },
+          :headers  => { "Accept" => "application/vnd.heroku+json; version=edge" },
           :method   => :delete,
           :path     => "/resources/#{resource.split('/').last}"
         )
