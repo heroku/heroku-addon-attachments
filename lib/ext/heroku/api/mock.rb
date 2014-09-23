@@ -62,7 +62,7 @@ module Heroku
       #)
 
       def self.add_mock_addon_attachmont(mock_data, app, addon, attachment_data)
-        attachment_name = attachment_data['name'] || addon['name'].split(':').first)
+        attachment_name = attachment_data['name'] || addon['name'].split(':').first
         mock_data[:addon_attachments][app] ||= []
         mock_data[:addon_attachments][app] << {
           'addon'       => {
