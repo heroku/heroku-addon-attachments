@@ -116,13 +116,12 @@ module Heroku::Command
       end
     end
 
-    # addons:create ADDON
+    # addons:create PLAN
     #
     # create an addon resource
     #
     #     --as ATTACHMENT     # name for this attachment to addon resource
     # -f, --force             # overwrite existing addon resource with same config
-    # -r, --resource RESOURCE # name for this attachment to addon resource
     #
     def create
       addon = args.shift
@@ -157,13 +156,12 @@ module Heroku::Command
       display("Use `heroku addons:docs #{addon.split(':').first}` to view documentation.")
     end
 
-    # addons:add RESOURCE
+    # addons:add ADDON
     #
     # add addon attachment from a resource to an app
     #
     # -n, --name NAME         # name for addon attachment
     # -f, --force             # overwrite existing addon attachment with same name
-    # -r, --resource RESOURCE # addon resource to add
     #
     def add
       resource = args.shift
@@ -189,49 +187,46 @@ module Heroku::Command
       end
     end
 
-    # addons:upgrade ADDON
+    # addons:upgrade ADDON PLAN
     #
-    # upgrade an existing addon resource to ADDON plan
-    #
-    # -r, --resource RESOURCE # addon resource to upgrade
+    # upgrade an existing addon resource to PLAN
     #
     def upgrade
-      resource = options[:resource]
-      raise CommandFailed.new("Missing resource name") if resource.nil?
-
       addon = args.shift
       raise CommandFailed.new("Missing add-on name") if addon.nil?
+
+      plan = args.shift
+      raise CommandFailed.new("Missing add-on plan") if addon.nil?
+
       #config = parse_options(args)
 
-      action("? Upgrading #{resource} to #{addon}") {}
+      action("? Upgrading #{addon} to #{plan}") {}
     end
 
-    # addons:downgrade RESOURCE
+    # addons:downgrade ADDON PLAN
     #
-    # downgrade an existing addon resource to ADDON plan
-    #
-    # -r, --resource RESOURCE # addon resource to downgrade
+    # downgrade an existing addon resource to PLAN
     #
     def downgrade
-      resource = options[:resource]
-      raise CommandFailed.new("Missing resource name") if resource.nil?
-
       addon = args.shift
       raise CommandFailed.new("Missing add-on name") if addon.nil?
+
+      plan = args.shift
+      raise CommandFailed.new("Missing add-on plan") if addon.nil?
+
       #config = parse_options(args)
 
-      action("? Downgrading #{resource} to #{addon}") {}
+      action("? Downgrading #{addon} to #{plan}") {}
     end
 
-    # addons:remove
+    # addons:remove ADDON
     #
     # remove addon attachment to a resource from an app
     #
     # -n, --name NAME         # name of addon attachment to remove
-    # -r, --resource RESOURCE # addon resource to remove
     #
     def remove
-      resource = options[:resource]
+      resource = args.shift
       attachment_name = options[:name] || resource && resource.split('/').last.gsub('-','_').upcase
       raise CommandFailed.new("Missing addon attachment name") if attachment_name.nil?
 
@@ -248,14 +243,12 @@ module Heroku::Command
       end
     end
 
-    # addons:destroy
+    # addons:destroy ADDON
     #
     # destroy an addon resources
     #
-    # -r, --resource RESOURCE # addon resource to remove
-    #
     def destroy
-      resource = options[:resource]
+      resource = args.shift
       raise CommandFailed.new("Missing resource name") if resource.nil?
 
       return unless confirm_command
@@ -270,7 +263,7 @@ module Heroku::Command
           :expects  => 200,
           :headers  => { "Accept" => "application/vnd.heroku+json; version=edge" },
           :method   => :delete,
-          :path     => "/resources/#{resource.split('/').last}"
+          :path     => "/apps/#{app}/addons/#{resource}"
         )
       end
     end
