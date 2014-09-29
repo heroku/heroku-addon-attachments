@@ -171,8 +171,8 @@ module Heroku::Command
       action("Adding #{resource} as #{attachment_name} to #{app}") do
         api.request(
           :body     => json_encode({
-            "app"     => app,
-            "addon"   => resource,
+            "app"     => {name: app},
+            "addon"   => {name: resource},
             "confirm" => options[:force],
             "name"    => options[:name]
           }),
