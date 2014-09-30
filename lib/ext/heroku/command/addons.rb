@@ -130,9 +130,9 @@ module Heroku::Command
 
         resource = api.request(
           :body     => json_encode({
-            "attachment"  => { "name" => options[:as] },
+            # FIXME: "attachment"  => { "name" => options[:as] },
             "config"      => config,
-            "force"       => options[:force],
+            # FIXME: "force"       => options[:force],
             "name"        => options[:resource],
             "plan"        => { "name" => addon }
           }),
