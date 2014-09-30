@@ -247,6 +247,8 @@ module Heroku::Command
     #
     # destroy an addon resources
     #
+    # -f, --force # allow destruction even if this in not the final attachment
+    #
     def destroy
       resource = args.shift
       raise CommandFailed.new("Missing resource name") if resource.nil?
@@ -260,6 +262,9 @@ module Heroku::Command
       end
       action("Destroying #{resource} on #{app}") do
         api.request(
+          :body     => json_encode({
+            "force" => options[:force],
+          }),
           :expects  => 200,
           :headers  => { "Accept" => "application/vnd.heroku+json; version=edge" },
           :method   => :delete,
