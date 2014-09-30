@@ -3,7 +3,7 @@ require "heroku/helpers/heroku_postgresql"
 
 module Heroku::Command
 
-  # manage addon resources
+  # manage add-on resources
   #
   class Addons < Base
 
@@ -11,7 +11,7 @@ module Heroku::Command
 
     # addons
     #
-    # list installed addons
+    # list installed add-ons
     #
     def index
       validate_arguments!
@@ -35,9 +35,9 @@ module Heroku::Command
 
     # addons:plans
     #
-    # list all available addon plans
+    # list all available add-on plans
     #
-    # --region REGION      # specify a region for addon plan availability
+    # --region REGION      # specify a region for add-on plan availability
     #
     #Example:
     #
@@ -49,7 +49,7 @@ module Heroku::Command
     def plans
       addons = heroku.addons(options)
       if addons.empty?
-        display "No addons available currently"
+        display "No add-ons available currently"
       else
         partitioned_addons = partition_addons(addons)
         partitioned_addons.each do |key, addons|
@@ -63,7 +63,7 @@ module Heroku::Command
 
     # addons:attachments
     #
-    # list addon attachments
+    # list add-on attachments
     #
     def attachments
       begin
@@ -75,7 +75,7 @@ module Heroku::Command
           :path     => "/apps/#{app}/addon-attachments"
         ).body
         if attachments.empty?
-          display("There are no addon attachments for this app.")
+          display("There are no add-on attachments for this app.")
         else
           styled_header("#{app} Add-on Attachments")
           styled_array(attachments.map do |attachment|
@@ -94,7 +94,7 @@ module Heroku::Command
             :path     => "/addon-attachments"
           ).body
           if attachments.empty?
-            display("You have no addon attachments.")
+            display("You have no add-on attachments.")
           else
             styled_header("Add-on Attachments")
             styled_array(attachments.map do |attachment|
@@ -113,7 +113,7 @@ module Heroku::Command
 
     # addons:create PLAN
     #
-    # create an addon resource
+    # create an add-on resource
     #
     def create
       addon = args.shift
@@ -147,21 +147,21 @@ module Heroku::Command
 
     # addons:add ADDON
     #
-    # add addon attachment from a resource to an app
+    # add add-on attachment from an add-on resource to an app
     #
-    # -n, --name NAME         # name for addon attachment
-    # -f, --force             # overwrite existing addon attachment with same name
+    # -n, --name NAME         # name for add-on attachment
+    # -f, --force             # overwrite existing add-on attachment with same name
     #
     def add
-      resource = args.shift
-      raise CommandFailed.new("Missing resource name") if resource.nil?
+      addon = args.shift
+      raise CommandFailed.new("Missing add-on name") if addon.nil?
 
-      attachment_name = options[:name] || resource.split('/').last.gsub('-','_').upcase
-      action("Adding #{resource} as #{attachment_name} to #{app}") do
+      attachment_name = options[:name] || addon.gsub('-','_').upcase
+      action("Adding #{addon} as #{attachment_name} to #{app}") do
         api.request(
           :body     => json_encode({
             "app"     => {"name" => app},
-            "addon"   => {"name" => resource},
+            "addon"   => {"name" => addon},
             "confirm" => options[:force],
             "name"    => options[:name]
           }),
@@ -178,7 +178,7 @@ module Heroku::Command
 
     # addons:upgrade ADDON PLAN
     #
-    # upgrade an existing addon resource to PLAN
+    # upgrade an existing add-on resource to PLAN
     #
     def upgrade
       addon = args.shift
@@ -194,7 +194,7 @@ module Heroku::Command
 
     # addons:downgrade ADDON PLAN
     #
-    # downgrade an existing addon resource to PLAN
+    # downgrade an existing add-on resource to PLAN
     #
     def downgrade
       addon = args.shift
@@ -210,14 +210,14 @@ module Heroku::Command
 
     # addons:remove ADDON
     #
-    # remove addon attachment to a resource from an app
+    # remove add-on attachment to a resource from an app
     #
-    # -n, --name NAME # name of addon attachment to remove
+    # -n, --name NAME # name of add-on attachment to remove
     #
     def remove
       addon_name = args.shift
-      attachment_name = options[:name] || addon_name && addon_name.split('/').last.gsub('-','_').upcase
-      raise CommandFailed.new("Missing addon attachment name") if attachment_name.nil?
+      attachment_name = options[:name] || addon_name && addon_name.gsub('-','_').upcase
+      raise CommandFailed.new("Missing add-on attachment name") if attachment_name.nil?
 
       addon_attachment = api.request(
         :expects => 200,
@@ -229,7 +229,7 @@ module Heroku::Command
       end
 
       unless addon_attachment
-        error("Addon attachment not found")
+        error("Add-on attachment not found")
       end
 
       action("Removing #{addon_name} as #{attachment_name} from #{app}") do
@@ -247,22 +247,22 @@ module Heroku::Command
 
     # addons:destroy ADDON
     #
-    # destroy an addon resources
+    # destroy an add-on resources
     #
     # -f, --force # allow destruction even if this in not the final attachment
     #
     def destroy
-      resource = args.shift
-      raise CommandFailed.new("Missing resource name") if resource.nil?
+      addon = args.shift
+      raise CommandFailed.new("Missing add-on name") if addon.nil?
 
       return unless confirm_command
 
-      as = options[:as] || resource.split('/').last.gsub('-','_').upcase
-      action("Removing #{resource} as #{as} from #{app}") {}
+      as = options[:as] || addon.gsub('-','_').upcase
+      action("Removing #{addon} as #{as} from #{app}") {}
       action("Unsetting #{as}_URL and restarting #{app}") do
         @status = api.get_release(app, 'current').body['name']
       end
-      action("Destroying #{resource} on #{app}") do
+      action("Destroying #{addon} on #{app}") do
         api.request(
           :body     => json_encode({
             "force" => options[:force],
@@ -270,14 +270,14 @@ module Heroku::Command
           :expects  => 200,
           :headers  => { "Accept" => "application/vnd.heroku+json; version=edge" },
           :method   => :delete,
-          :path     => "/apps/#{app}/addons/#{resource}"
+          :path     => "/apps/#{app}/addons/#{addon}"
         )
       end
     end
 
     # addons:docs ADDON
     #
-    # open an addon's documentation in your browser
+    # open an add-on's documentation in your browser
     #
     def docs
       unless addon = shift_argument
@@ -300,19 +300,19 @@ module Heroku::Command
         error([
           "`#{addon}` is not a heroku add-on.",
           suggestion(addon, addon_names + addon_types),
-          "See `heroku addons:list` for all available addons."
+          "See `heroku addons:list` for all available add-ons."
         ].compact.join("\n"))
       when 1
         addon_type = type_matches.first
         launchy("Opening #{addon_type} docs", addon_docs_url(addon_type))
       else
-        error("Ambiguous addon name: #{addon}\nPerhaps you meant #{name_matches[0...-1].map {|match| "`#{match}`"}.join(', ')} or `#{name_matches.last}`.\n")
+        error("Ambiguous add-on name: #{addon}\nPerhaps you meant #{name_matches[0...-1].map {|match| "`#{match}`"}.join(', ')} or `#{name_matches.last}`.\n")
       end
     end
 
     # addons:open ADDON
     #
-    # open an addon's dashboard in your browser
+    # open an add-on's dashboard in your browser
     #
     def open
       unless addon = shift_argument
@@ -327,19 +327,19 @@ module Heroku::Command
       when 0 then
         addon_names = api.get_addons.body.map {|a| a['name']}
         if addon_names.any? {|name| name =~ /^#{addon}/}
-          error("Addon not installed: #{addon}")
+          error("Add-on not installed: #{addon}")
         else
           error([
             "`#{addon}` is not a heroku add-on.",
             suggestion(addon, addon_names + addon_names.map {|name| name.split(':').first}.uniq),
-            "See `heroku addons:list` for all available addons."
+            "See `heroku addons:list` for all available add-ons."
           ].compact.join("\n"))
         end
       when 1 then
         addon_to_open = matches.first
         launchy("Opening #{addon_to_open} for #{app}", app_addon_url(addon_to_open))
       else
-        error("Ambiguous addon name: #{addon}\nPerhaps you meant #{matches[0...-1].map {|match| "`#{match}`"}.join(', ')} or `#{matches.last}`.\n")
+        error("Ambiguous add-on name: #{addon}\nPerhaps you meant #{matches[0...-1].map {|match| "`#{match}`"}.join(', ')} or `#{matches.last}`.\n")
       end
     end
 
