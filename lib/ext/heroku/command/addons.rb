@@ -81,11 +81,16 @@ module Heroku::Command
         if attachments.empty?
           display("There are no add-on attachments for this app.")
         else
+          attachments_by_resource = {}
+          attachments.each do |attachment|
+            attachments_by_resource["@#{attachment['addon']['name'].downcase}"] ||= []
+            attachments_by_resource["@#{attachment['addon']['name'].downcase}"] << attachment['name']
+          end
           styled_header("#{app} Add-on Attachments")
-          styled_array(attachments.map do |attachment|
+          styled_array(attachments_by_resource.map do |resource, attachments|
             [
-              attachment['name'],
-              "@#{attachment['addon']['name'].downcase}"
+              attachments.join(', '),
+              resource
             ]
           end)
         end
