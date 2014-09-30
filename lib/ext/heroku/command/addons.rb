@@ -120,26 +120,23 @@ module Heroku::Command
       raise CommandFailed.new("Missing add-on name") if addon.nil? || %w{--fork --follow --rollback}.include?(addon)
       config = parse_options(args)
 
-        resource = api.request(
-          :body     => json_encode({
-            # FIXME: "attachment"  => { "name" => options[:as] },
-            "config"      => config,
-            # FIXME: "force"       => options[:force],
-            "name"        => options[:resource],
-            "plan"        => { "name" => addon }
-          }),
-          :expects  => 200,
-          :headers  => { "Accept" => "application/vnd.heroku+json; version=edge" },
-          :method   => :post,
-          :path     => "/apps/#{app}/addons"
-        ).body
+      addon = api.request(
+        :body     => json_encode({
+          # FIXME: "attachment"  => { "name" => options[:as] },
+          "config"      => config,
+          # FIXME: "force"       => options[:force],
+          "name"        => options[:addon],
+          "plan"        => { "name" => addon }
+        }),
+        :expects  => 200,
+        :headers  => { "Accept" => "application/vnd.heroku+json; version=edge" },
+        :method   => :post,
+        :path     => "/apps/#{app}/addons"
+      ).body
 
-      identifier = "#{resource['addon']['name'].split(':',2).first}/#{resource['name']}"
-      attachment = options[:as] || identifier.split('/').last.gsub('-','_').upcase
-
-      action("Creating #{identifier}") {}
-      action("Adding #{identifier} as #{attachment} to #{app}") {}
-      action("Setting #{attachment}_URL and restarting #{app}") do
+      action("Creating #{addon['name']}") {}
+      action("Adding #{addon['name']} to #{app}") {}
+      action("Setting #{addon['config_vars']} and restarting #{app}") do
         @status = api.get_release(app, 'current').body['name']
       end
 
