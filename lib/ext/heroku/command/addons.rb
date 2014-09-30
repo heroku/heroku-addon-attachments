@@ -28,7 +28,11 @@ module Heroku::Command
       else
         styled_header("#{app} Add-on Resources")
         styled_array(addons.map do |addon|
-          [addon['plan']['name'], addon['config_vars'].join(', ')]
+          [
+            addon['plan']['name'],
+            addon['config_vars'].join(', '),
+            "@#{addon['name'].downcase}"
+          ]
         end)
       end
     end
@@ -81,7 +85,7 @@ module Heroku::Command
           styled_array(attachments.map do |attachment|
             [
               attachment['name'],
-              "@#{attachment['addon']['name']}"
+              "@#{attachment['addon']['name'].downcase}"
             ]
           end)
         end
@@ -101,7 +105,7 @@ module Heroku::Command
               [
                 attachment['app']['name'],
                 attachment['name'],
-                "@#{attachment['addon']['name']}"
+                "@#{attachment['addon']['name'].downcase}"
               ]
             end.sort)
           end
@@ -134,8 +138,8 @@ module Heroku::Command
         :path     => "/apps/#{app}/addons"
       ).body
 
-      action("Creating #{addon['name']}") {}
-      action("Adding #{addon['name']} to #{app}") {}
+      action("Creating #{addon['name'].downcase}") {}
+      action("Adding #{addon['name'].downcase} to #{app}") {}
       action("Setting #{addon['config_vars']} and restarting #{app}") do
         @status = api.get_release(app, 'current').body['name']
       end
