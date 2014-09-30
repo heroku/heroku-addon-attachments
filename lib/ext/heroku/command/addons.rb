@@ -16,25 +16,20 @@ module Heroku::Command
     def index
       validate_arguments!
 
-      installed = api.get_addons(app).body
-      if installed.empty?
+      addons = api.request(
+        :expects  => 200,
+        :headers  => { "Accept" => "application/vnd.heroku+json; version=edge" },
+        :method   => :get,
+        :path     => "/apps/#{app}/addons"
+      ).body
+
+      if addons.empty?
         display("#{app} has no add-ons.")
       else
-        available, pending = installed.partition { |a| a['configured'] }
-
-        unless available.empty?
-          styled_header("#{app} Configured Add-ons")
-          styled_array(available.map do |a|
-            [a['name'], a['attachment_name'] || '']
-          end)
-        end
-
-        unless pending.empty?
-          styled_header("#{app} Add-ons to Configure")
-          styled_array(pending.map do |a|
-            [a['name'], app_addon_url(a['name'])]
-          end)
-        end
+        styled_header("#{app} Add-on Resources")
+        styled_array(addons.map do |addon|
+          [addon['plan']['name'], addon['config_vars'].join(', ')]
+        end)
       end
     end
 
