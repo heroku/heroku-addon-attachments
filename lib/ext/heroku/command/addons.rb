@@ -115,9 +115,6 @@ module Heroku::Command
     #
     # create an addon resource
     #
-    #     --as ATTACHMENT     # name for this attachment to addon resource
-    # -f, --force             # overwrite existing addon resource with same config
-    #
     def create
       addon = args.shift
       raise CommandFailed.new("Missing add-on name") if addon.nil? || %w{--fork --follow --rollback}.include?(addon)
