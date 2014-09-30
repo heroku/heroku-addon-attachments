@@ -146,7 +146,7 @@ module Heroku::Command
 
       #display resource['provider_data']['message'] unless resource['provider_data']['message'].strip == ""
 
-      display("Use `heroku addons:docs #{addon.split(':').first}` to view documentation.")
+      display("Use `heroku addons:docs #{addon['plan']['name'].split(':').first}` to view documentation.")
     end
 
     # addons:add ADDON
