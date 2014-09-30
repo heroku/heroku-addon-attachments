@@ -171,8 +171,8 @@ module Heroku::Command
       action("Adding #{resource} as #{attachment_name} to #{app}") do
         api.request(
           :body     => json_encode({
-            "app"     => {name: app},
-            "addon"   => {name: resource},
+            "app"     => {"name" => app},
+            "addon"   => {"name" => resource},
             "confirm" => options[:force],
             "name"    => options[:name]
           }),
@@ -223,19 +223,32 @@ module Heroku::Command
     #
     # remove addon attachment to a resource from an app
     #
-    # -n, --name NAME         # name of addon attachment to remove
+    # -n, --name NAME # name of addon attachment to remove
     #
     def remove
-      resource = args.shift
-      attachment_name = options[:name] || resource && resource.split('/').last.gsub('-','_').upcase
+      addon_name = args.shift
+      attachment_name = options[:name] || addon_name && addon_name.split('/').last.gsub('-','_').upcase
       raise CommandFailed.new("Missing addon attachment name") if attachment_name.nil?
 
-      action("Removing #{resource} as #{attachment_name} from #{app}") do
+      addon_attachment = api.request(
+        :expects => 200,
+        :headers  => { "Accept" => "application/vnd.heroku+json; version=edge" },
+        :method   => :get,
+        :path     => "/apps/#{app}/addon-attachments"
+      ).body.detect do |attachment|
+        attachment['addon']['name'] == addon_name && attachment['name'] == attachment_name
+      end
+
+      unless addon_attachment
+        error("Addon attachment not found")
+      end
+
+      action("Removing #{addon_name} as #{attachment_name} from #{app}") do
         api.request(
           :expects  => 200,
           :headers  => { "Accept" => "application/vnd.heroku+json; version=edge" },
           :method   => :delete,
-          :path     => "/apps/#{app}/addon-attachments/#{attachment_name}"
+          :path     => "/addon-attachments/#{addon_attachment['id']}"
         ).body
       end
       action("Unsetting #{attachment_name}_URL and restarting #{app}") do
