@@ -191,9 +191,21 @@ module Heroku::Command
       plan = args.shift
       raise CommandFailed.new("Missing add-on plan") if addon.nil?
 
-      #config = parse_options(args)
+      config = parse_options(args)
 
-      action("? Upgrading #{addon} to #{plan}") {}
+      action("Upgrading #{addon} to #{plan}") do
+        api.request(
+          :body     => json_encode({
+            "config"      => config,
+            "name"        => addon,
+            "plan"        => { "name" => plan }
+          }),
+          :expects  => 200,
+          :headers  => { "Accept" => "application/vnd.heroku+json; version=edge" },
+          :method   => :patch,
+          :path     => "/apps/#{app}/addons/#{addon}"
+        )
+      end
     end
 
     # addons:downgrade ADDON PLAN
@@ -207,9 +219,21 @@ module Heroku::Command
       plan = args.shift
       raise CommandFailed.new("Missing add-on plan") if addon.nil?
 
-      #config = parse_options(args)
+      config = parse_options(args)
 
-      action("? Downgrading #{addon} to #{plan}") {}
+      action("Downgrading #{addon} to #{plan}") do
+        api.request(
+          :body     => json_encode({
+            "config"      => config,
+            "name"        => addon,
+            "plan"        => { "name" => plan }
+          }),
+          :expects  => 200,
+          :headers  => { "Accept" => "application/vnd.heroku+json; version=edge" },
+          :method   => :patch,
+          :path     => "/apps/#{app}/addons/#{addon}"
+        )
+      end
     end
 
     # addons:remove ADDON
