@@ -241,15 +241,12 @@ module Heroku::Command
       end
     end
 
-    # addons:remove ADDON
+    # addons:remove ATTACHMENT
     #
-    # remove add-on attachment to a resource from an app
-    #
-    # -n, --name NAME # name of add-on attachment to remove
+    # remove add-on attachment from an add-on resource to an app
     #
     def remove
-      addon_name = args.shift
-      attachment_name = options[:name] || addon_name && addon_name.gsub('-','_').upcase
+      attachment_name = args.shift
       raise CommandFailed.new("Missing add-on attachment name") if attachment_name.nil?
 
       addon_attachment = api.request(
@@ -258,14 +255,14 @@ module Heroku::Command
         :method   => :get,
         :path     => "/apps/#{app}/addon-attachments"
       ).body.detect do |attachment|
-        attachment['addon']['name'] == addon_name && attachment['name'] == attachment_name
+        attachment['name'] == attachment_name
       end
 
       unless addon_attachment
         error("Add-on attachment not found")
       end
 
-      action("Removing #{addon_name} as #{attachment_name} from #{app}") do
+      action("Removing #{addon_attachment['addon']['name']} as #{attachment_name} from #{app}") do
         api.request(
           :expects  => 200,
           :headers  => { "Accept" => "application/vnd.heroku+json; version=edge" },
