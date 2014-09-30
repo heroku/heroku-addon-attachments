@@ -132,7 +132,7 @@ module Heroku::Command
           "name"        => options[:addon],
           "plan"        => { "name" => addon }
         }),
-        :expects  => 200,
+        :expects  => 201,
         :headers  => { "Accept" => "application/vnd.heroku+json; version=edge" },
         :method   => :post,
         :path     => "/apps/#{app}/addons"
@@ -169,7 +169,7 @@ module Heroku::Command
             "confirm" => options[:force],
             "name"    => options[:name]
           }),
-          :expects  => 200,
+          :expects  => 201,
           :headers  => { "Accept" => "application/vnd.heroku+json; version=edge" },
           :method   => :post,
           :path     => "/addon-attachments"
