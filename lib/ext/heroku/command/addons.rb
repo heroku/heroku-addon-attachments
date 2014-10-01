@@ -209,9 +209,8 @@ module Heroku::Command
       action("Upgrading #{addon} to #{plan}") do
         api.request(
           :body     => json_encode({
-            "config"      => config,
-            "name"        => addon,
-            "plan"        => { "name" => plan }
+            "config" => config,
+            "plan"   => { "name" => plan }
           }),
           :expects  => 200,
           :headers  => { "Accept" => "application/vnd.heroku+json; version=edge" },
@@ -237,9 +236,8 @@ module Heroku::Command
       action("Downgrading #{addon} to #{plan}") do
         api.request(
           :body     => json_encode({
-            "config"      => config,
-            "name"        => addon,
-            "plan"        => { "name" => plan }
+            "config" => config,
+            "plan"   => { "name" => plan }
           }),
           :expects  => 200,
           :headers  => { "Accept" => "application/vnd.heroku+json; version=edge" },
