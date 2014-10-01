@@ -169,8 +169,11 @@ module Heroku::Command
       addon = args.shift
       raise CommandFailed.new("Missing add-on name") if addon.nil?
 
-      attachment_name = options[:name] || addon.gsub('-','_').upcase
-      action("Adding #{addon} as #{attachment_name} to #{app}") do
+      msg = options[:name] ?
+        "Adding #{addon} as #{options[:name]} to #{app}" :
+        "Adding #{addon} to #{app}"
+
+      response = action(msg) do
         api.request(
           :body     => json_encode({
             "app"     => {"name" => app},
@@ -184,7 +187,8 @@ module Heroku::Command
           :path     => "/addon-attachments"
         ).body
       end
-      action("Setting #{attachment_name}_URL and restarting #{app}") do
+
+      action("Setting #{response["name"]} vars and restarting #{app}") do
         @status = api.get_release(app, 'current').body['name']
       end
     end
