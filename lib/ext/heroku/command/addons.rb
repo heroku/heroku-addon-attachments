@@ -162,8 +162,8 @@ module Heroku::Command
     #
     # add add-on attachment from an add-on resource to an app
     #
-    # -n, --name NAME         # name for add-on attachment
-    # -f, --force             # overwrite existing add-on attachment with same name
+    # -n, --name NAME     # name for add-on attachment
+    # --confirm APP_NAME  # overwrite existing add-on attachment with same name
     #
     def add
       addon = args.shift
@@ -178,7 +178,7 @@ module Heroku::Command
           :body     => json_encode({
             "app"     => {"name" => app},
             "addon"   => {"name" => addon},
-            "confirm" => options[:force],
+            "confirm" => options[:confirm],
             "name"    => options[:name]
           }),
           :expects  => 201,
