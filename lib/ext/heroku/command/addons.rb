@@ -124,6 +124,10 @@ module Heroku::Command
     #
     # create an add-on resource
     #
+    # --name NAME             # (optional) name for the resource
+    # --as ATTACHMENT_NAME    # (optional) name for the initial add-on attachment
+    # --confirm APP_NAME      # (optional) ovewrite existing config vars or existing add-on attachments
+    #
     def create
       addon = args.shift
       raise CommandFailed.new("Missing add-on name") if addon.nil? || %w{--fork --follow --rollback}.include?(addon)
@@ -131,11 +135,11 @@ module Heroku::Command
 
       addon = api.request(
         :body     => json_encode({
-          # FIXME: "attachment"  => { "name" => options[:as] },
-          "config"      => config,
-          # FIXME: "force"       => options[:force],
-          "name"        => options[:addon],
-          "plan"        => { "name" => addon }
+          "attachment" => { "name" => options[:as] },
+          "config"     => config,
+          "name"       => options[:name],
+          "confirm"    => options[:confirm],
+          "plan"       => { "name" => addon }
         }),
         :expects  => 201,
         :headers  => { "Accept" => "application/vnd.heroku+json; version=edge" },
