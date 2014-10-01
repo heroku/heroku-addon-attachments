@@ -149,7 +149,7 @@ module Heroku::Command
 
       action("Creating #{addon['name'].downcase}") {}
       action("Adding #{addon['name'].downcase} to #{app}") {}
-      action("Setting #{addon['config_vars']} and restarting #{app}") do
+      action("Setting #{addon['config_vars'].join(', ')} and restarting #{app}") do
         @status = api.get_release(app, 'current').body['name']
       end
 
