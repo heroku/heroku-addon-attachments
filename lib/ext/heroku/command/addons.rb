@@ -30,7 +30,6 @@ module Heroku::Command
         styled_array(addons.map do |addon|
           [
             addon['plan']['name'],
-            addon['config_vars'].join(', '),
             "@#{addon['name'].downcase}"
           ]
         end)
