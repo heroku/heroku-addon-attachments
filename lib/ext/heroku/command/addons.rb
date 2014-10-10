@@ -84,8 +84,13 @@ module Heroku::Command
     #
     # list add-on attachments
     #
+    # --all # list attachments across all apps in account
     def attachments
       begin
+        # raise as though no app specified to fall through to rescue
+        if options[:all]
+          raise Heroku::Command::CommandFailed.new("No app specified")
+        end
         # will raise if no app specified
         attachments = api.request(
           :expects  => 200,
