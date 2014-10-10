@@ -23,14 +23,30 @@ module Heroku::Command
         :path     => "/apps/#{app}/addons"
       ).body
 
+      attachments = api.request(
+        :expects  => 200,
+        :headers  => { "Accept" => "application/vnd.heroku+json; version=edge" },
+        :method   => :get,
+        :path     => "/apps/#{app}/addon-attachments"
+      ).body
+      attachments_by_resource = {}
+      attachments.each do |attachment|
+        next unless attachment["app"]["name"] == app
+        addon_name = attachment["addon"]["name"].downcase
+        attachments_by_resource["#{addon_name}"] ||= []
+        attachments_by_resource["#{addon_name}"] << attachment['name']
+      end
+
       if addons.empty?
         display("#{app} has no add-ons.")
       else
         styled_header("#{app} Add-on Resources")
         styled_array(addons.map do |addon|
+          addon_name = addon['name'].downcase
           [
             addon['plan']['name'],
-            "@#{addon['name'].downcase}"
+            attachments_by_resource[addon_name].join(", "),
+            "@#{addon_name}"
           ]
         end)
       end
@@ -82,14 +98,15 @@ module Heroku::Command
         else
           attachments_by_resource = {}
           attachments.each do |attachment|
-            attachments_by_resource["@#{attachment['addon']['name'].downcase}"] ||= []
-            attachments_by_resource["@#{attachment['addon']['name'].downcase}"] << attachment['name']
+            addon_name = attachment["addon"]["name"].downcase
+            attachments_by_resource["#{addon_name}"] ||= []
+            attachments_by_resource["#{addon_name}"] << attachment['name']
           end
           styled_header("#{app} Add-on Attachments")
           styled_array(attachments_by_resource.map do |resource, attachments|
             [
               attachments.join(', '),
-              resource
+              "@#{resource}"
             ]
           end)
         end
