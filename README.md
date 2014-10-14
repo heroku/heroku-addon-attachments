@@ -1,12 +1,12 @@
-heroku-swiss
-============
+heroku-addon-attachments
+========================
 
-plugin to provide swiss functionality
+plugin to provide attachable add-ons functionality
 
 ## Installation
 
 ```bash
-$ heroku plugins:install git@github.com:heroku/heroku-swiss.git
+$ heroku plugins:install git@github.com:heroku/heroku-addon-attachments.git
 ````
 
 ## Usage
