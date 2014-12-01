@@ -187,30 +187,40 @@ module Heroku::Command
     # --confirm APP_NAME  # overwrite existing add-on attachment with same name
     #
     def add
-      addon = args.shift
-      raise CommandFailed.new("Missing add-on name") if addon.nil?
+      unless addon = args.shift
+        error("Usage: heroku addons:add ADDON\nMust specify ADDON to add.")
+      end
 
       msg = options[:name] ?
         "Adding #{addon} as #{options[:name]} to #{app}" :
         "Adding #{addon} to #{app}"
 
-      response = action(msg) do
-        api.request(
-          :body     => json_encode({
-            "app"     => {"name" => app},
-            "addon"   => {"name" => addon},
-            "confirm" => options[:confirm],
-            "name"    => options[:name]
-          }),
-          :expects  => 201,
-          :headers  => { "Accept" => "application/vnd.heroku+json; version=edge" },
-          :method   => :post,
-          :path     => "/addon-attachments"
-        ).body
-      end
+      display("#{msg}... ", false)
 
-      action("Setting #{response["name"]} vars and restarting #{app}") do
-        @status = api.get_release(app, 'current').body['name']
+      response = api.request(
+        :body     => json_encode({
+          "app"     => {"name" => app},
+          "addon"   => {"name" => addon},
+          "confirm" => options[:confirm],
+          "name"    => options[:name]
+        }),
+        :expects  => [201, 422],
+        :headers  => { "Accept" => "application/vnd.heroku+json; version=edge" },
+        :method   => :post,
+        :path     => "/addon-attachments"
+      )
+
+      case response.status
+      when 201
+        display("done")
+        action("Setting #{response["name"]} vars and restarting #{app}") do
+          @status = api.get_release(app, 'current').body['name']
+        end
+      when 422 # add-on resource not found, should probably be 404
+        display("failed")
+        output_with_bang("Add-on resource `#{addon}` not found.")
+        output_with_bang("List available resources with `heroku addons:resources`.")
+        output_with_bang("Provision a new add-on resource with `heroku addons:create #{options[:name]}`.")
       end
     end
 
