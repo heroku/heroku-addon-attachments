@@ -213,7 +213,7 @@ module Heroku::Command
       case response.status
       when 201
         display("done")
-        action("Setting #{response["name"]} vars and restarting #{app}") do
+        action("Setting #{response.body["name"]} vars and restarting #{app}") do
           @status = api.get_release(app, 'current').body['name']
         end
       when 422 # add-on resource not found, should probably be 404
