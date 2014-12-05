@@ -219,7 +219,7 @@ module Heroku::Command
       when 422 # add-on resource not found, should probably be 404
         display("failed")
         output_with_bang("Add-on resource `#{addon}` not found.")
-        output_with_bang("List available resources with `heroku addons:resources`.")
+        output_with_bang("List available resources with `heroku addons`.")
         output_with_bang("Provision a new add-on resource with `heroku addons:create #{options[:name]}`.")
       end
     end
