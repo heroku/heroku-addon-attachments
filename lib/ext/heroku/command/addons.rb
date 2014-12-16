@@ -45,7 +45,7 @@ module Heroku::Command
           addon_name = addon['name'].downcase
           [
             addon['plan']['name'],
-            attachments_by_resource[addon_name].join(", "),
+            Array(attachments_by_resource[addon_name]).join(", "),
             "@#{addon_name}"
           ]
         end)
