@@ -32,9 +32,9 @@ module Heroku::Command
       attachments_by_resource = {}
       attachments.each do |attachment|
         next unless attachment["app"]["name"] == app
-        addon_name = attachment["addon"]["name"].downcase
-        attachments_by_resource["#{addon_name}"] ||= []
-        attachments_by_resource["#{addon_name}"] << attachment['name']
+        addon_uuid = attachment["addon"]["id"]
+        attachments_by_resource["#{addon_uuid}"] ||= []
+        attachments_by_resource["#{addon_uuid}"] << attachment['name']
       end
 
       if addons.empty?
@@ -45,7 +45,7 @@ module Heroku::Command
           addon_name = addon['name'].downcase
           [
             addon['plan']['name'],
-            attachments_by_resource[addon_name].join(", "),
+            attachments_by_resource[addon['id']].join(", "),
             "@#{addon_name}"
           ]
         end)
