@@ -299,7 +299,7 @@ module Heroku::Command
         error("Add-on attachment not found")
       end
 
-      action("Removing #{addon_attachment['addon']['name']} as #{attachment_name} from #{app}") do
+      action("Removing #{attachment_name} attachment to #{addon_attachment['addon']['name']} from #{app}") do
         api.request(
           :expects  => 200,
           :headers  => { "Accept" => "application/vnd.heroku+json; version=edge" },
