@@ -190,6 +190,7 @@ module Heroku::Command
       unless addon = args.shift
         error("Usage: heroku addons:add ADDON\nMust specify ADDON to add.")
       end
+      addon = addon.dup.sub('@', '')
 
       msg = options[:name] ?
         "Adding #{addon} as #{options[:name]} to #{app}" :
@@ -231,6 +232,7 @@ module Heroku::Command
     def upgrade
       addon = args.shift
       raise CommandFailed.new("Missing add-on name") if addon.nil?
+      addon = addon.dup.sub('@', '')
 
       plan = args.shift
       raise CommandFailed.new("Missing add-on plan") if addon.nil?
@@ -258,6 +260,7 @@ module Heroku::Command
     def downgrade
       addon = args.shift
       raise CommandFailed.new("Missing add-on name") if addon.nil?
+      addon = addon.dup.sub('@', '')
 
       plan = args.shift
       raise CommandFailed.new("Missing add-on plan") if addon.nil?
@@ -324,6 +327,7 @@ module Heroku::Command
 
       return unless confirm_command
 
+      addon = addon.dup.sub('@', '')
       as = options[:as] || addon.gsub('-','_').upcase
       action("Removing #{addon} as #{as} from #{app}") {}
       action("Unsetting #{as}_URL and restarting #{app}") do
