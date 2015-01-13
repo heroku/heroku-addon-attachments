@@ -17,14 +17,14 @@ module Heroku::Command
       validate_arguments!
 
       addons = api.request(
-        :expects  => 200,
+        :expects  => [200, 206],
         :headers  => { "Accept" => "application/vnd.heroku+json; version=edge" },
         :method   => :get,
         :path     => "/apps/#{app}/addons"
       ).body
 
       attachments = api.request(
-        :expects  => 200,
+        :expects  => [200, 206],
         :headers  => { "Accept" => "application/vnd.heroku+json; version=edge" },
         :method   => :get,
         :path     => "/apps/#{app}/addon-attachments"
@@ -93,7 +93,7 @@ module Heroku::Command
         end
         # will raise if no app specified
         attachments = api.request(
-          :expects  => 200,
+          :expects  => [200, 206],
           :headers  => { "Accept" => "application/vnd.heroku+json; version=edge" },
           :method   => :get,
           :path     => "/apps/#{app}/addon-attachments"
@@ -118,7 +118,7 @@ module Heroku::Command
       rescue Heroku::Command::CommandFailed => error
         if error.message =~ /No app specified/
           attachments = api.request(
-            :expects  => 200,
+            :expects  => [200, 206],
             :headers  => { "Accept" => "application/vnd.heroku+json; version=edge" },
             :method   => :get,
             :path     => "/addon-attachments"
@@ -287,7 +287,7 @@ module Heroku::Command
       raise CommandFailed.new("Missing add-on attachment name") if attachment_name.nil?
 
       addon_attachment = api.request(
-        :expects => 200,
+        :expects => [200, 206],
         :headers  => { "Accept" => "application/vnd.heroku+json; version=edge" },
         :method   => :get,
         :path     => "/apps/#{app}/addon-attachments"
