@@ -217,9 +217,9 @@ module Heroku::Command
         action("Setting #{response.body["name"]} vars and restarting #{app}") do
           @status = api.get_release(app, 'current').body['name']
         end
-      when 422 # add-on resource not found, should probably be 404
+      when 422 # add-on resource not found or cannot be attached
         display("failed")
-        output_with_bang("Add-on resource `#{addon}` not found.")
+        output_with_bang(response.body["message"])
         output_with_bang("List available resources with `heroku addons`.")
         output_with_bang("Provision a new add-on resource with `heroku addons:create #{options[:name]}`.")
       end
