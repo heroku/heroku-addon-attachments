@@ -245,7 +245,7 @@ module Heroku::Command
             "config" => config,
             "plan"   => { "name" => plan }
           }),
-          :expects  => 200,
+          :expects  => 200..300,
           :headers  => { "Accept" => "application/vnd.heroku+json; version=edge" },
           :method   => :patch,
           :path     => "/apps/#{app}/addons/#{addon}"
@@ -273,7 +273,7 @@ module Heroku::Command
             "config" => config,
             "plan"   => { "name" => plan }
           }),
-          :expects  => 200,
+          :expects  => 200..300,
           :headers  => { "Accept" => "application/vnd.heroku+json; version=edge" },
           :method   => :patch,
           :path     => "/apps/#{app}/addons/#{addon}"
@@ -304,7 +304,7 @@ module Heroku::Command
 
       action("Removing #{attachment_name} attachment to #{addon_attachment['addon']['name']} from #{app}") do
         api.request(
-          :expects  => 200,
+          :expects  => 200..300,
           :headers  => { "Accept" => "application/vnd.heroku+json; version=edge" },
           :method   => :delete,
           :path     => "/addon-attachments/#{addon_attachment['id']}"
@@ -338,7 +338,7 @@ module Heroku::Command
           :body     => json_encode({
             "force" => options[:force],
           }),
-          :expects  => 200,
+          :expects  => 200..300,
           :headers  => { "Accept" => "application/vnd.heroku+json; version=edge" },
           :method   => :delete,
           :path     => "/apps/#{app}/addons/#{addon}"
