@@ -328,11 +328,22 @@ module Heroku::Command
       return unless confirm_command
 
       addon = addon.dup.sub('@', '')
-      as = options[:as] || addon.gsub('-','_').upcase
-      action("Removing #{addon} as #{as} from #{app}") {}
-      action("Unsetting #{as}_URL and restarting #{app}") do
-        @status = api.get_release(app, 'current').body['name']
+      addon_attachments = api.request(
+        :expects => [200, 206],
+        :headers  => { "Accept" => "application/vnd.heroku+json; version=edge" },
+        :method   => :get,
+        :path     => "/apps/#{app}/addon-attachments"
+      ).body.keep_if do |attachment|
+        attachment['addon']['name'] == addon
       end
+      config_vars = addon_attachments.map { |attachment| attachment['name'] }
+
+      config_vars.each do |var_name|
+        action("Removing #{addon} as #{var_name} from #{app}") {}
+        action("Unsetting #{var_name} and restarting #{app}") {}
+      end
+
+      @status = api.get_release(app, 'current').body['name']
       action("Destroying #{addon} on #{app}") do
         api.request(
           :body     => json_encode({
