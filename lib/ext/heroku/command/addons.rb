@@ -225,6 +225,12 @@ module Heroku::Command
       end
     end
 
+    # addons:add ADDON
+    #
+    def add
+      deprecate("`heroku #{current_command} has been deprecated. Please use `heroku addons:create` instead.")
+    end
+
     # addons:upgrade ADDON PLAN
     #
     # upgrade an existing add-on resource to PLAN
@@ -313,6 +319,12 @@ module Heroku::Command
       action("Unsetting #{attachment_name}_URL and restarting #{app}") do
         @status = api.get_release(app, 'current').body['name']
       end
+    end
+
+    # addons:remove ADDON
+    #
+    def remove
+      deprecate("`heroku #{current_command} has been deprecated. Please use `heroku addons:destroy` instead.")
     end
 
     # addons:destroy ADDON
