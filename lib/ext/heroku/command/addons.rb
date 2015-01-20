@@ -179,22 +179,22 @@ module Heroku::Command
       display("Use `heroku addons:docs #{addon['plan']['name'].split(':').first}` to view documentation.")
     end
 
-    # addons:add ADDON
+    # addons:attach ADDON
     #
-    # add add-on attachment from an add-on resource to an app
+    # attach add-on resource to an app
     #
     # -n, --name NAME     # name for add-on attachment
     # --confirm APP_NAME  # overwrite existing add-on attachment with same name
     #
-    def add
+    def attach
       unless addon = args.shift
-        error("Usage: heroku addons:add ADDON\nMust specify ADDON to add.")
+        error("Usage: heroku addons:attach ADDON\nMust specify ADDON to attach.")
       end
       addon = addon.dup.sub('@', '')
 
       msg = options[:name] ?
-        "Adding #{addon} as #{options[:name]} to #{app}" :
-        "Adding #{addon} to #{app}"
+        "Attaching #{addon} as #{options[:name]} to #{app}" :
+        "Attaching #{addon} to #{app}"
 
       display("#{msg}... ", false)
 
@@ -281,11 +281,11 @@ module Heroku::Command
       end
     end
 
-    # addons:remove ATTACHMENT
+    # addons:detach ATTACHMENT
     #
-    # remove add-on attachment from an add-on resource to an app
+    # detach add-on resource from an app
     #
-    def remove
+    def detach
       attachment_name = args.shift
       raise CommandFailed.new("Missing add-on attachment name") if attachment_name.nil?
 
