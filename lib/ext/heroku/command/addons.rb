@@ -183,8 +183,8 @@ module Heroku::Command
     #
     # attach add-on resource to an app
     #
-    # -n, --name NAME     # name for add-on attachment
-    # --confirm APP_NAME  # overwrite existing add-on attachment with same name
+    # --as ATTACHMENT_NAME  # (optional) name for add-on attachment
+    # --confirm APP_NAME    # overwrite existing add-on attachment with same name
     #
     def attach
       unless addon = args.shift
