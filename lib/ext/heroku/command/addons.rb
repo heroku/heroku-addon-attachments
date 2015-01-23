@@ -192,8 +192,10 @@ module Heroku::Command
       end
       addon = addon.dup.sub('@', '')
 
-      msg = options[:name] ?
-        "Attaching #{addon} as #{options[:name]} to #{app}" :
+      attachment_name = options[:as]
+
+      msg = attachment_name ?
+        "Attaching #{addon} as #{attachment_name} to #{app}" :
         "Attaching #{addon} to #{app}"
 
       display("#{msg}... ", false)
@@ -203,7 +205,7 @@ module Heroku::Command
           "app"     => {"name" => app},
           "addon"   => {"name" => addon},
           "confirm" => options[:confirm],
-          "name"    => options[:name]
+          "name"    => attachment_name
         }),
         :expects  => [201, 422],
         :headers  => { "Accept" => "application/vnd.heroku+json; version=edge" },
@@ -221,7 +223,7 @@ module Heroku::Command
         display("failed")
         output_with_bang(response.body["message"])
         output_with_bang("List available resources with `heroku addons`.")
-        output_with_bang("Provision a new add-on resource with `heroku addons:create #{options[:name]}`.")
+        output_with_bang("Provision a new add-on resource with `heroku addons:create ADDON_PLAN`.")
       end
     end
 
