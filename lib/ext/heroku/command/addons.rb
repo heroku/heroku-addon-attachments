@@ -150,6 +150,10 @@ module Heroku::Command
     # --confirm APP_NAME      # (optional) ovewrite existing config vars or existing add-on attachments
     #
     def create
+      if current_command == "addons:add"
+        deprecate("`heroku #{current_command} has been deprecated. Please use `heroku addons:create` instead.")
+      end
+
       addon = args.shift
       raise CommandFailed.new("Missing add-on name") if addon.nil? || %w{--fork --follow --rollback}.include?(addon)
       config = parse_options(args)
@@ -227,11 +231,6 @@ module Heroku::Command
       end
     end
 
-    # addons:add ADDON
-    #
-    def add
-      deprecate("`heroku #{current_command} has been deprecated. Please use `heroku addons:create` instead.")
-    end
 
     # addons:upgrade ADDON PLAN
     #
@@ -323,12 +322,6 @@ module Heroku::Command
       end
     end
 
-    # addons:remove ADDON
-    #
-    def remove
-      deprecate("`heroku #{current_command} has been deprecated. Please use `heroku addons:destroy` instead.")
-    end
-
     # addons:destroy ADDON
     #
     # destroy an add-on resources
@@ -336,6 +329,10 @@ module Heroku::Command
     # -f, --force # allow destruction even if this in not the final attachment
     #
     def destroy
+      if current_command == "addons:remove"
+        deprecate("`heroku #{current_command} has been deprecated. Please use `heroku addons:destroy` instead.")
+      end
+
       addon = args.shift
       raise CommandFailed.new("Missing add-on name") if addon.nil?
 
