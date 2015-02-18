@@ -203,7 +203,14 @@ module Heroku::Command
 
       action("Creating #{addon['name'].downcase}") {}
       action("Adding #{addon['name'].downcase} to #{app}") {}
-      action("Setting #{addon['config_vars'].join(', ')} and restarting #{app}") do
+
+      if addon.has_key? 'config_vars' && addon['config_vars']
+        message ="Setting #{addon['config_vars'].join(', ')} and restarting #{app}"
+      else
+        message = "Restarting #{app}"
+      end
+
+      action(message) do
         @status = api.get_release(app, 'current').body['name']
       end
 
