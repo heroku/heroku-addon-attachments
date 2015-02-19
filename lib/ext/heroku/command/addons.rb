@@ -232,16 +232,15 @@ module Heroku::Command
     end
 
 
-    # addons:upgrade ADDON PLAN
+    # addons:upgrade ADDON:PLAN
     #
     # upgrade an existing add-on resource to PLAN
     #
     def upgrade
-      addon = args.shift
+      addon, plan = args.shift.split(/:/, 2)
       raise CommandFailed.new("Missing add-on name") if addon.nil?
-      addon = addon.dup.sub('@', '')
+      addon = addon.sub('@', '')
 
-      plan = args.shift
       raise CommandFailed.new("Missing add-on plan") if plan.nil?
 
       config = parse_options(args)
@@ -260,16 +259,15 @@ module Heroku::Command
       end
     end
 
-    # addons:downgrade ADDON PLAN
+    # addons:downgrade ADDON:PLAN
     #
     # downgrade an existing add-on resource to PLAN
     #
     def downgrade
-      addon = args.shift
+      addon, plan = args.shift.split(/:/, 2)
       raise CommandFailed.new("Missing add-on name") if addon.nil?
-      addon = addon.dup.sub('@', '')
+      addon = addon.sub('@', '')
 
-      plan = args.shift
       raise CommandFailed.new("Missing add-on plan") if plan.nil?
 
       config = parse_options(args)
