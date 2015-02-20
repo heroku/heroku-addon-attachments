@@ -15,6 +15,7 @@ module Heroku::Command
     #
     def index
       validate_arguments!
+      requires_preauth
 
       addons = api.request(
         :expects  => [200, 206],
@@ -154,6 +155,8 @@ module Heroku::Command
         deprecate("`heroku #{current_command} has been deprecated. Please use `heroku addons:create` instead.")
       end
 
+      requires_preauth
+
       addon = args.shift
       raise CommandFailed.new("Missing add-on name") if addon.nil? || %w{--fork --follow --rollback}.include?(addon)
       config = parse_options(args)
@@ -195,6 +198,8 @@ module Heroku::Command
         error("Usage: heroku addons:attach ADDON\nMust specify ADDON to attach.")
       end
       addon = addon.dup.sub('@', '')
+
+      requires_preauth
 
       attachment_name = options[:as]
 
@@ -296,6 +301,8 @@ module Heroku::Command
       attachment_name = args.shift
       raise CommandFailed.new("Missing add-on attachment name") if attachment_name.nil?
 
+      requires_preauth
+
       addon_attachment = api.request(
         :expects => [200, 206],
         :headers  => { "Accept" => "application/vnd.heroku+json; version=edge" },
@@ -332,6 +339,8 @@ module Heroku::Command
       if current_command == "addons:remove"
         deprecate("`heroku #{current_command} has been deprecated. Please use `heroku addons:destroy` instead.")
       end
+
+      requires_preauth
 
       addon = args.shift
       raise CommandFailed.new("Missing add-on name") if addon.nil?
