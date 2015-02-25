@@ -247,7 +247,7 @@ module Heroku::Command
       addon = addon.dup.sub('@', '')
 
       plan = args.shift
-      raise CommandFailed.new("Missing add-on plan") if addon.nil?
+      raise CommandFailed.new("Missing add-on plan") if plan.nil?
 
       config = parse_options(args)
 
@@ -275,7 +275,7 @@ module Heroku::Command
       addon = addon.dup.sub('@', '')
 
       plan = args.shift
-      raise CommandFailed.new("Missing add-on plan") if addon.nil?
+      raise CommandFailed.new("Missing add-on plan") if plan.nil?
 
       config = parse_options(args)
 
