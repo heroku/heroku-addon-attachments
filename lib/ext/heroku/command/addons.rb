@@ -13,43 +13,59 @@ module Heroku::Command
     #
     # list installed add-ons
     #
+    # --all # list add-ons across all apps in account
     def index
       validate_arguments!
       requires_preauth
+
+      base = options[:all] ? "" : "/apps/#{app}"
 
       addons = api.request(
         :expects  => [200, 206],
         :headers  => { "Accept" => "application/vnd.heroku+json; version=3.switzerland" },
         :method   => :get,
-        :path     => "/apps/#{app}/addons"
+        :path     => "#{base}/addons"
       ).body
 
       attachments = api.request(
         :expects  => [200, 206],
         :headers  => { "Accept" => "application/vnd.heroku+json; version=3.switzerland" },
         :method   => :get,
-        :path     => "/apps/#{app}/addon-attachments"
+        :path     => "#{base}/addon-attachments"
       ).body
-      attachments_by_resource = {}
-      attachments.each do |attachment|
-        next unless attachment["app"]["name"] == app
-        addon_uuid = attachment["addon"]["id"]
-        attachments_by_resource["#{addon_uuid}"] ||= []
-        attachments_by_resource["#{addon_uuid}"] << attachment['name']
+
+      attachments_by_resource = attachments.
+        group_by { |att| att["addon"]["id"] }
+
+      display_attachments = lambda do |addon|
+        attachments = attachments_by_resource[addon['id']].map do |att|
+          if addon['app']['id'] != att['app']['id']
+            "#{att['name']} (on #{att['app']['name']})"
+          else
+            att["name"]
+          end
+        end
+
+        attachments.join(', ')
       end
 
       if addons.empty?
         display("#{app} has no add-ons.")
       else
-        styled_header("#{app} Add-on Resources")
-        styled_array(addons.map do |addon|
+        table = addons.map do |addon|
           addon_name = addon['name'].downcase
+
           [
             addon['plan']['name'],
             "@#{addon_name}",
-            attachments_by_resource[addon['id']].join(", ")
-          ]
-        end)
+            (addon['app']['name'] if options[:all]),
+            display_attachments.(addon)
+          ].compact
+        end
+
+        header_scope = options[:all] ? '' : "#{app} "
+        styled_header("#{header_scope}Add-on Resources")
+        styled_array(table)
       end
     end
 
