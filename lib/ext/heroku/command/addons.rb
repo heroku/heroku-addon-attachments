@@ -56,30 +56,54 @@ module Heroku::Command
     # addons:plans
     #
     # list all available add-on plans
-    #
-    # --region REGION      # specify a region for add-on plan availability
-    #
-    #Example:
-    #
-    # $ heroku addons:plans --region eu
-    # === available
-    # adept-scale:battleship, corvette...
-    # adminium:enterprise, petproject...
-    #
-    def plans
-      addons = heroku.addons(options)
-      if addons.empty?
-        display "No add-ons available currently"
-      else
-        partitioned_addons = partition_addons(addons)
-        partitioned_addons.each do |key, addons|
-          partitioned_addons[key] = format_for_display(addons)
-        end
-        display_object(partitioned_addons)
-      end
+    def services
+      addon_services = api.request(
+        :expects  => [200, 206],
+        :headers  => { "Accept" => "application/vnd.heroku+json; version=3" },
+        :method   => :get,
+        :path     => "/addon-services"
+      ).body
+
+      display_table(addon_services, %w[name human_name], %w[Slug Name])
+      display "\nSee plans with `heroku addons:plans SERVICE`"
     end
 
-    alias_command "addons:list", "addons:plans"
+    alias_command "addons:list", "addons:services"
+
+    # addons:plans SERVICE
+    #
+    # list all available plans for an add-on service
+    def plans
+      service = args.shift
+      raise CommandFailed.new("Missing add-on service") if service.nil?
+
+      service = api.request(
+        :expects  => [200, 206],
+        :headers  => { "Accept" => "application/vnd.heroku+json; version=3" },
+        :method   => :get,
+        :path     => "/addon-services/#{service}"
+      ).body
+
+      display_header("#{service['human_name']} Plans")
+
+      plans = api.request(
+        :expects  => [200, 206],
+        :headers  => { "Accept" => "application/vnd.heroku+json; version=3" },
+        :method   => :get,
+        :path     => "/addon-services/#{service['id']}/plans"
+      ).body
+
+      plans = plans.sort_by { |p| [(!p['default']).to_s, p['price']['cents']] }.map do |plan|
+        {
+          "default"    => ('default' if plan['default']),
+          "name"       => plan["name"],
+          "human_name" => plan["human_name"],
+          "price"      => "$%.2f/%s" % [(plan["price"]["cents"] / 100.0), plan["price"]["unit"]],
+        }
+      end
+
+      display_table(plans, %w[default name human_name price], [nil, 'Slug', 'Name', 'Price'])
+    end
 
     # addons:attachments
     #
