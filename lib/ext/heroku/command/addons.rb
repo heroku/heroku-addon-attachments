@@ -267,7 +267,7 @@ module Heroku::Command
     # upgrade an existing add-on resource to PLAN
     #
     def upgrade
-      change_plan("Upgrading")
+      change_plan(:upgrade)
     end
 
     # addons:downgrade ADDON PLAN
@@ -275,7 +275,7 @@ module Heroku::Command
     # downgrade an existing add-on resource to PLAN
     #
     def downgrade
-      change_plan("Downgrading")
+      change_plan(:downgrade)
     end
 
     # addons:detach ATTACHMENT
@@ -460,27 +460,76 @@ module Heroku::Command
 
     private
 
-    def change_plan(label)
-      addon = args.shift
-      raise CommandFailed.new("Missing add-on name") if addon.nil?
-      addon = addon.dup.sub('@', '')
+    def change_plan(direction)
+      addon_name, plan = args.shift, args.shift
 
-      plan = args.shift
+      if addon_name && !plan # If invocated as `addons:Xgrade service:plan`
+        deprecate("No add-on name specified (see `heroku help #{current_command}`)")
+
+        addon = nil
+        plan = addon_name
+        service = plan.split(':').first
+
+        action("Finding add-on from service #{service} on app #{app}") do
+          addon = resolve_addon(app, service)
+          addon_name = addon['name']
+        end
+        display "Found #{addon_name} (#{addon['plan']['name']}) on #{app}."
+      else
+        addon_name = addon_name.sub(/^@/, '')
+      end
+
       raise CommandFailed.new("Missing add-on plan") if plan.nil?
+      raise CommandFailed.new("Missing add-on name") if addon_name.nil?
 
-      config = parse_options(args)
-
-      action("#{label} #{addon} to #{plan}") do
+      labels = {upgrade: 'Upgrading', downgrade: 'Downgrading'}
+      action("#{labels[direction]} #{addon_name} to #{plan}") do
         api.request(
           :body     => json_encode({
-            "config" => config,
             "plan"   => { "name" => plan }
           }),
           :expects  => 200..300,
           :headers  => { "Accept" => "application/vnd.heroku+json; version=edge" },
           :method   => :patch,
-          :path     => "/apps/#{app}/addons/#{addon}"
+          :path     => "/apps/#{app}/addons/#{addon_name}"
         )
+      end
+    end
+
+    def resolve_addon(app_name, service_plan_specifier)
+      service_name, plan_name = service_plan_specifier.split(':')
+
+      # TODO: temporary until heroku/api#3725 is merged
+      service_id = api.request(
+        :expects  => 200,
+        :headers  => { "Accept" => "application/vnd.heroku+json; version=3" },
+        :method   => :get,
+        :path     => "/addon-services/#{service_name}"
+      ).body["id"]
+
+      addons = api.request(
+        :expects  => [200, 206],
+        :headers  => { "Accept" => "application/vnd.heroku+json; version=edge" },
+        :method   => :get,
+        :path     => "/apps/#{app}/addons"
+      ).body
+
+      addons.select! do |addon|
+        # addon['addon_service']['name'] == service_name &&
+        addon['addon_service']['id'] == service_id &&
+          (plan_name.nil? || addon['plan']['name'] == plan_name) &&
+          # the /apps/:id/addons endpoint can return more than just those owned
+          # by the app, so filter:
+          addon['app']['name'] == app_name
+      end
+
+      case addons.count
+      when 1
+        return addons[0]
+      when 0
+        error("No #{service_name} add-on on app #{app_name} found")
+      else
+        error("Ambiguous add-on identifier #{service_plan_specifier}\nList your add-ons with `heroku addons`")
       end
     end
 
