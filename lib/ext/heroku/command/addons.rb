@@ -262,33 +262,12 @@ module Heroku::Command
       end
     end
 
-
     # addons:upgrade ADDON PLAN
     #
     # upgrade an existing add-on resource to PLAN
     #
     def upgrade
-      addon = args.shift
-      raise CommandFailed.new("Missing add-on name") if addon.nil?
-      addon = addon.dup.sub('@', '')
-
-      plan = args.shift
-      raise CommandFailed.new("Missing add-on plan") if plan.nil?
-
-      config = parse_options(args)
-
-      action("Upgrading #{addon} to #{plan}") do
-        api.request(
-          :body     => json_encode({
-            "config" => config,
-            "plan"   => { "name" => plan }
-          }),
-          :expects  => 200..300,
-          :headers  => { "Accept" => "application/vnd.heroku+json; version=edge" },
-          :method   => :patch,
-          :path     => "/apps/#{app}/addons/#{addon}"
-        )
-      end
+      change_plan("Upgrading")
     end
 
     # addons:downgrade ADDON PLAN
@@ -296,27 +275,7 @@ module Heroku::Command
     # downgrade an existing add-on resource to PLAN
     #
     def downgrade
-      addon = args.shift
-      raise CommandFailed.new("Missing add-on name") if addon.nil?
-      addon = addon.dup.sub('@', '')
-
-      plan = args.shift
-      raise CommandFailed.new("Missing add-on plan") if plan.nil?
-
-      config = parse_options(args)
-
-      action("Downgrading #{addon} to #{plan}") do
-        api.request(
-          :body     => json_encode({
-            "config" => config,
-            "plan"   => { "name" => plan }
-          }),
-          :expects  => 200..300,
-          :headers  => { "Accept" => "application/vnd.heroku+json; version=edge" },
-          :method   => :patch,
-          :path     => "/apps/#{app}/addons/#{addon}"
-        )
-      end
+      change_plan("Downgrading")
     end
 
     # addons:detach ATTACHMENT
@@ -500,6 +459,30 @@ module Heroku::Command
     end
 
     private
+
+    def change_plan(label)
+      addon = args.shift
+      raise CommandFailed.new("Missing add-on name") if addon.nil?
+      addon = addon.dup.sub('@', '')
+
+      plan = args.shift
+      raise CommandFailed.new("Missing add-on plan") if plan.nil?
+
+      config = parse_options(args)
+
+      action("#{label} #{addon} to #{plan}") do
+        api.request(
+          :body     => json_encode({
+            "config" => config,
+            "plan"   => { "name" => plan }
+          }),
+          :expects  => 200..300,
+          :headers  => { "Accept" => "application/vnd.heroku+json; version=edge" },
+          :method   => :patch,
+          :path     => "/apps/#{app}/addons/#{addon}"
+        )
+      end
+    end
 
     def addon_docs_url(addon)
       "https://devcenter.#{heroku.host}/articles/#{addon.split(':').first}"
