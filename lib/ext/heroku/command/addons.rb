@@ -105,14 +105,16 @@ module Heroku::Command
           attachments_by_resource = {}
           attachments.each do |attachment|
             addon_name = attachment["addon"]["name"].downcase
-            attachments_by_resource["#{addon_name}"] ||= []
-            attachments_by_resource["#{addon_name}"] << attachment['name']
+
+            attachments_by_resource["#{addon_name}"] ||= { "names" => [], "app" => attachment["addon"]["app"]["name"] }
+            attachments_by_resource["#{addon_name}"]["names"] << attachment['name']
           end
           styled_header("#{app} Add-on Attachments")
-          styled_array(attachments_by_resource.map do |resource, attachments|
+          styled_array(attachments_by_resource.map do |resource, info|
             [
-              attachments.join(', '),
-              "@#{resource}"
+              info["names"].join(', '),
+              "@#{resource}",
+              "#{info["app"]}",
             ]
           end)
         end
