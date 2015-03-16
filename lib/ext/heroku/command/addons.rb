@@ -448,14 +448,39 @@ module Heroku::Command
       end
       validate_arguments!
 
-      app_addons = api.get_addons(app).body.map {|a| a['name']}
-      matches = app_addons.select {|a| a =~ /^#{addon}/}.sort
+      addons = api.request(
+        expects: 200..300,
+        headers: { "Accept" => "application/vnd.heroku+json; version=edge" },
+        method:  :get,
+        path:    "/apps/#{app}/addons"
+      ).body
+
+      # When passed the @-name (@whatever-foo-1234)
+      matches = addons.select { |a| a["name"] =~ /@?#{addon}/ }
+
+      # When passed the service name and plan (heroku-postgresql:hobby-dev)
+      if matches.empty?
+        matches = addons.select { |a| a["plan"]["name"] == addon }
+      end
+
+      # When passed the service name (heroku-postgresql)
+      if matches.empty?
+        matches = addons.select { |a| a["addon_service"]["name"] == addon }
+      end
 
       case matches.length
       when 0 then
-        addon_names = api.get_addons.body.map {|a| a['name']}
+        all_addons = api.request(
+          expects: 200..300,
+          headers: { "Accept" => "application/vnd.heroku+json; version=edge" },
+          method:  :get,
+          path:    "/addons"
+        ).body
+
+        addon_names = all_addons.map { |a| a["name"] }
+
         if addon_names.any? {|name| name =~ /^#{addon}/}
-          error("Add-on not installed: #{addon}")
+          error("Add-on not installed: #{addon}.")
         else
           error([
             "`#{addon}` is not a heroku add-on.",
@@ -465,9 +490,12 @@ module Heroku::Command
         end
       when 1 then
         addon_to_open = matches.first
-        launchy("Opening #{addon_to_open} for #{app}", app_addon_url(addon_to_open))
+        launchy("Opening #{addon_to_open["addon_service"]["name"]} (#{addon_to_open["name"]}) for #{app}", addon_to_open["web_url"])
       else
-        error("Ambiguous add-on name: #{addon}\nPerhaps you meant #{matches[0...-1].map {|match| "`#{match}`"}.join(', ')} or `#{matches.last}`.\n")
+        message         = "Ambiguous add-on name. Perhaps you meant one of the following: "
+        suggestions     = matches[0...-1].map { |a| "`#{a["name"]}`" }.join(", ")
+        last_suggestion = "`#{matches.last["name"]}`"
+        error([message, suggestions, " or ", last_suggestion].join)
       end
     end
 
@@ -475,10 +503,6 @@ module Heroku::Command
 
     def addon_docs_url(addon)
       "https://devcenter.#{heroku.host}/articles/#{addon.split(':').first}"
-    end
-
-    def app_addon_url(addon)
-      "https://addons-sso.heroku.com/apps/#{app}/addons/#{addon}"
     end
 
     def partition_addons(addons)
