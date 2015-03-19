@@ -204,6 +204,8 @@ module Heroku::Command
       action("Creating #{addon['name'].downcase}") {}
       action("Adding #{addon['name'].downcase} to #{app}") {}
 
+      message = ''
+
       unless addon['config_vars'].empty?
         message ="Setting #{addon['config_vars'].join(', ')} and restarting #{app}"
       end
