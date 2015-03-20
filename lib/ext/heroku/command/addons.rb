@@ -204,14 +204,12 @@ module Heroku::Command
       action("Creating #{addon['name'].downcase}") {}
       action("Adding #{addon['name'].downcase} to #{app}") {}
 
-      message = ''
 
       unless addon['config_vars'].empty?
         message ="Setting #{addon['config_vars'].join(', ')} and restarting #{app}"
-      end
-
-      action(message) do
-        @status = api.get_release(app, 'current').body['name']
+        action(message) do
+          @status = api.get_release(app, 'current').body['name']
+        end
       end
 
       #display resource['provider_data']['message'] unless resource['provider_data']['message'].strip == ""
