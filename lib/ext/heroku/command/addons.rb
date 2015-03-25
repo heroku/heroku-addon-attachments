@@ -346,25 +346,28 @@ module Heroku::Command
       ).body.keep_if do |attachment|
         attachment['addon']['name'] == addon
       end
-      config_vars = addon_attachments.map { |attachment| attachment['name'] }
 
-      config_vars.each do |var_name|
-        action("Removing #{addon} as #{var_name} from #{app}") {}
-        action("Unsetting #{var_name} and restarting #{app}") {}
+      attachment_names = addon_attachments.map { |attachment| attachment['name'] }
+      attachment_names.each do |attachment_name|
+        action("Removing #{addon} as #{attachment_name} from #{app}") {}
       end
 
-      @status = api.get_release(app, 'current').body['name']
-      action("Destroying #{addon} on #{app}") do
-        api.request(
-          :body     => json_encode({
-            "force" => options[:force],
-          }),
-          :expects  => 200..300,
-          :headers  => { "Accept" => "application/vnd.heroku+json; version=edge" },
-          :method   => :delete,
-          :path     => "/apps/#{app}/addons/#{addon}"
-        )
+      destroyed_addon = api.request(
+        :body     => json_encode({
+          "force" => options[:force],
+        }),
+        :expects  => 200..300,
+        :headers  => { "Accept" => "application/vnd.heroku+json; version=edge" },
+        :method   => :delete,
+        :path     => "/apps/#{app}/addons/#{addon}"
+      ).body
+
+      config_vars = destroyed_addon['config_vars']
+      if config_vars.any?
+        @status = api.get_release(app, 'current').body['name']
+        action("Unsetting #{config_vars.join(', ')} and restarting #{app}") {}
       end
+      action("Destroying #{addon}") {}
     end
 
     # addons:docs ADDON
