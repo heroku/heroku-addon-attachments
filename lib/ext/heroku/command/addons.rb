@@ -321,7 +321,7 @@ module Heroku::Command
 
     # addons:destroy ADDON
     #
-    # destroy an add-on resources
+    # destroy an add-on resource
     #
     # -f, --force # allow destruction even if this in not the final attachment
     #
