@@ -499,14 +499,6 @@ module Heroku::Command
     def resolve_addon(app_name, service_plan_specifier)
       service_name, plan_name = service_plan_specifier.split(':')
 
-      # TODO: temporary until heroku/api#3725 is merged
-      service_id = api.request(
-        :expects  => 200,
-        :headers  => { "Accept" => "application/vnd.heroku+json; version=3" },
-        :method   => :get,
-        :path     => "/addon-services/#{service_name}"
-      ).body["id"]
-
       addons = api.request(
         :expects  => [200, 206],
         :headers  => { "Accept" => "application/vnd.heroku+json; version=edge" },
@@ -515,8 +507,7 @@ module Heroku::Command
       ).body
 
       addons.select! do |addon|
-        # addon['addon_service']['name'] == service_name &&
-        addon['addon_service']['id'] == service_id &&
+        addon['addon_service']['name'] == service_name &&
           (plan_name.nil? || addon['plan']['name'] == plan_name) &&
           # the /apps/:id/addons endpoint can return more than just those owned
           # by the app, so filter:
