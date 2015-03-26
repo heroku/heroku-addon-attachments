@@ -203,8 +203,13 @@ module Heroku::Command
 
       action("Creating #{addon['name'].downcase}") {}
       action("Adding #{addon['name'].downcase} to #{app}") {}
-      action("Setting #{addon['config_vars'].join(', ')} and restarting #{app}") do
-        @status = api.get_release(app, 'current').body['name']
+
+
+      unless addon['config_vars'].empty?
+        message ="Setting #{addon['config_vars'].join(', ')} and restarting #{app}"
+        action(message) do
+          @status = api.get_release(app, 'current').body['name']
+        end
       end
 
       #display resource['provider_data']['message'] unless resource['provider_data']['message'].strip == ""
@@ -251,7 +256,7 @@ module Heroku::Command
       case response.status
       when 201
         display("done")
-        action("Setting #{response.body["name"]} vars and restarting #{app}") do
+        action("Setting #{response.body["name"]} and restarting #{app}") do
           @status = api.get_release(app, 'current').body['name']
         end
       when 422 # add-on resource not found or cannot be attached
@@ -308,15 +313,13 @@ module Heroku::Command
           :method   => :delete,
           :path     => "/addon-attachments/#{addon_attachment['id']}"
         ).body
-      end
-      action("Unsetting #{attachment_name}_URL and restarting #{app}") do
         @status = api.get_release(app, 'current').body['name']
       end
     end
 
     # addons:destroy ADDON
     #
-    # destroy an add-on resources
+    # destroy an add-on resource
     #
     # -f, --force # allow destruction even if this in not the final attachment
     #
@@ -341,25 +344,27 @@ module Heroku::Command
       ).body.keep_if do |attachment|
         attachment['addon']['name'] == addon
       end
-      config_vars = addon_attachments.map { |attachment| attachment['name'] }
 
-      config_vars.each do |var_name|
-        action("Removing #{addon} as #{var_name} from #{app}") {}
-        action("Unsetting #{var_name} and restarting #{app}") {}
+      attachment_names = addon_attachments.map { |attachment| attachment['name'] }
+      attachment_names.each do |attachment_name|
+        action("Removing #{addon} as #{attachment_name} from #{app}") {}
       end
 
-      @status = api.get_release(app, 'current').body['name']
-      action("Destroying #{addon} on #{app}") do
-        api.request(
-          :body     => json_encode({
-            "force" => options[:force],
-          }),
-          :expects  => 200..300,
-          :headers  => { "Accept" => "application/vnd.heroku+json; version=edge" },
-          :method   => :delete,
-          :path     => "/apps/#{app}/addons/#{addon}"
-        )
+      destroyed_addon = api.request(
+        :body     => json_encode({
+          "force" => options[:force],
+        }),
+        :expects  => 200..300,
+        :headers  => { "Accept" => "application/vnd.heroku+json; version=edge" },
+        :method   => :delete,
+        :path     => "/apps/#{app}/addons/#{addon}"
+      ).body
+
+      if destroyed_addon['config_vars'].any?
+        @status = api.get_release(app, 'current').body['name']
+        action("Unsetting #{destroyed_addon['config_vars'].join(', ')} and restarting #{app}") {}
       end
+      action("Destroying #{addon}") {}
     end
 
     # addons:docs ADDON
