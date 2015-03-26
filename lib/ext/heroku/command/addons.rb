@@ -256,7 +256,7 @@ module Heroku::Command
       case response.status
       when 201
         display("done")
-        action("Setting #{response.body["name"]} vars and restarting #{app}") do
+        action("Setting #{response.body["name"]} and restarting #{app}") do
           @status = api.get_release(app, 'current').body['name']
         end
       when 422 # add-on resource not found or cannot be attached
@@ -362,10 +362,9 @@ module Heroku::Command
         :path     => "/apps/#{app}/addons/#{addon}"
       ).body
 
-      config_vars = destroyed_addon['config_vars']
-      if config_vars.any?
+      if destroyed_addon['config_vars'].any?
         @status = api.get_release(app, 'current').body['name']
-        action("Unsetting #{config_vars.join(', ')} and restarting #{app}") {}
+        action("Unsetting #{destroyed_addon['config_vars'].join(', ')} and restarting #{app}") {}
       end
       action("Destroying #{addon}") {}
     end
