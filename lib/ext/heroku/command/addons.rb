@@ -313,8 +313,6 @@ module Heroku::Command
           :method   => :delete,
           :path     => "/addon-attachments/#{addon_attachment['id']}"
         ).body
-      end
-      action("Unsetting #{attachment_name}_URL and restarting #{app}") do
         @status = api.get_release(app, 'current').body['name']
       end
     end
