@@ -53,10 +53,14 @@ module Heroku::Command
       end
     end
 
-    # addons:plans
+    # addons:services
     #
-    # list all available add-on plans
+    # list all available add-on services
     def services
+      if current_command == "addons:list"
+        deprecate("`heroku #{current_command}` has been deprecated. Please use `heroku addons:services` instead.")
+      end
+
       addon_services = api.request(
         :expects  => [200, 206],
         :headers  => { "Accept" => "application/vnd.heroku+json; version=3" },
@@ -68,6 +72,7 @@ module Heroku::Command
       display "\nSee plans with `heroku addons:plans SERVICE`"
     end
 
+    private :list # removes docs for non-plugin implementation
     alias_command "addons:list", "addons:services"
 
     # addons:plans SERVICE
@@ -178,7 +183,7 @@ module Heroku::Command
     #
     def create
       if current_command == "addons:add"
-        deprecate("`heroku #{current_command} has been deprecated. Please use `heroku addons:create` instead.")
+        deprecate("`heroku #{current_command}` has been deprecated. Please use `heroku addons:create` instead.")
       end
 
       requires_preauth
@@ -211,6 +216,9 @@ module Heroku::Command
 
       display("Use `heroku addons:docs #{addon['plan']['name'].split(':').first}` to view documentation.")
     end
+
+    private :add # removes docs for non-plugin implementation
+    alias_command "addons:add", "addons:create"
 
     # addons:attach ADDON
     #
@@ -322,7 +330,7 @@ module Heroku::Command
     #
     def destroy
       if current_command == "addons:remove"
-        deprecate("`heroku #{current_command} has been deprecated. Please use `heroku addons:destroy` instead.")
+        deprecate("`heroku #{current_command}` has been deprecated. Please use `heroku addons:destroy` instead.")
       end
 
       requires_preauth
@@ -361,6 +369,9 @@ module Heroku::Command
         )
       end
     end
+
+    private :remove # removes docs for non-plugin implementation
+    alias_command "addons:remove", "addons:destroy"
 
     # addons:docs ADDON
     #
