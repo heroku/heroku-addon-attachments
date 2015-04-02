@@ -19,14 +19,14 @@ module Heroku::Command
 
       addons = api.request(
         :expects  => [200, 206],
-        :headers  => { "Accept" => "application/vnd.heroku+json; version=edge" },
+        :headers  => { "Accept" => "application/vnd.heroku+json; version=3.switzerland" },
         :method   => :get,
         :path     => "/apps/#{app}/addons"
       ).body
 
       attachments = api.request(
         :expects  => [200, 206],
-        :headers  => { "Accept" => "application/vnd.heroku+json; version=edge" },
+        :headers  => { "Accept" => "application/vnd.heroku+json; version=3.switzerland" },
         :method   => :get,
         :path     => "/apps/#{app}/addon-attachments"
       ).body
@@ -124,7 +124,7 @@ module Heroku::Command
         # will raise if no app specified
         attachments = api.request(
           :expects  => [200, 206],
-          :headers  => { "Accept" => "application/vnd.heroku+json; version=edge" },
+          :headers  => { "Accept" => "application/vnd.heroku+json; version=3.switzerland" },
           :method   => :get,
           :path     => "/apps/#{app}/addon-attachments"
         ).body
@@ -151,7 +151,7 @@ module Heroku::Command
         if error.message =~ /No app specified/
           attachments = api.request(
             :expects  => [200, 206],
-            :headers  => { "Accept" => "application/vnd.heroku+json; version=edge" },
+            :headers  => { "Accept" => "application/vnd.heroku+json; version=3.switzerland" },
             :method   => :get,
             :path     => "/addon-attachments"
           ).body
@@ -201,7 +201,7 @@ module Heroku::Command
           "plan"       => { "name" => addon }
         }),
         :expects  => 201,
-        :headers  => { "Accept" => "application/vnd.heroku+json; version=edge" },
+        :headers  => { "Accept" => "application/vnd.heroku+json; version=3.switzerland" },
         :method   => :post,
         :path     => "/apps/#{app}/addons"
       ).body
@@ -251,7 +251,7 @@ module Heroku::Command
           "name"    => attachment_name
         }),
         :expects  => [201, 422],
-        :headers  => { "Accept" => "application/vnd.heroku+json; version=edge" },
+        :headers  => { "Accept" => "application/vnd.heroku+json; version=3.switzerland" },
         :method   => :post,
         :path     => "/addon-attachments"
       )
@@ -298,7 +298,7 @@ module Heroku::Command
 
       addon_attachment = api.request(
         :expects => [200, 206],
-        :headers  => { "Accept" => "application/vnd.heroku+json; version=edge" },
+        :headers  => { "Accept" => "application/vnd.heroku+json; version=3.switzerland" },
         :method   => :get,
         :path     => "/apps/#{app}/addon-attachments"
       ).body.detect do |attachment|
@@ -312,7 +312,7 @@ module Heroku::Command
       action("Removing #{attachment_name} attachment to #{addon_attachment['addon']['name']} from #{app}") do
         api.request(
           :expects  => 200..300,
-          :headers  => { "Accept" => "application/vnd.heroku+json; version=edge" },
+          :headers  => { "Accept" => "application/vnd.heroku+json; version=3.switzerland" },
           :method   => :delete,
           :path     => "/addon-attachments/#{addon_attachment['id']}"
         ).body
@@ -343,7 +343,7 @@ module Heroku::Command
       addon = addon.dup.sub('@', '')
       addon_attachments = api.request(
         :expects => [200, 206],
-        :headers  => { "Accept" => "application/vnd.heroku+json; version=edge" },
+        :headers  => { "Accept" => "application/vnd.heroku+json; version=3.switzerland" },
         :method   => :get,
         :path     => "/apps/#{app}/addon-attachments"
       ).body.keep_if do |attachment|
@@ -363,7 +363,7 @@ module Heroku::Command
             "force" => options[:force],
           }),
           :expects  => 200..300,
-          :headers  => { "Accept" => "application/vnd.heroku+json; version=edge" },
+          :headers  => { "Accept" => "application/vnd.heroku+json; version=3.switzerland" },
           :method   => :delete,
           :path     => "/apps/#{app}/addons/#{addon}"
         )
@@ -420,7 +420,7 @@ module Heroku::Command
 
       addons = api.request(
         expects: 200..300,
-        headers: { "Accept" => "application/vnd.heroku+json; version=edge" },
+        headers: { "Accept" => "application/vnd.heroku+json; version=3.switzerland" },
         method:  :get,
         path:    "/apps/#{app}/addons"
       ).body
@@ -442,7 +442,7 @@ module Heroku::Command
       when 0 then
         all_addons = api.request(
           expects: 200..300,
-          headers: { "Accept" => "application/vnd.heroku+json; version=edge" },
+          headers: { "Accept" => "application/vnd.heroku+json; version=3.switzerland" },
           method:  :get,
           path:    "/addons"
         ).body
@@ -500,7 +500,7 @@ module Heroku::Command
             "plan"   => { "name" => plan }
           }),
           :expects  => 200..300,
-          :headers  => { "Accept" => "application/vnd.heroku+json; version=edge" },
+          :headers  => { "Accept" => "application/vnd.heroku+json; version=3.switzerland" },
           :method   => :patch,
           :path     => "/apps/#{app}/addons/#{addon_name}"
         )
@@ -512,7 +512,7 @@ module Heroku::Command
 
       addons = api.request(
         :expects  => [200, 206],
-        :headers  => { "Accept" => "application/vnd.heroku+json; version=edge" },
+        :headers  => { "Accept" => "application/vnd.heroku+json; version=3.switzerland" },
         :method   => :get,
         :path     => "/apps/#{app}/addons"
       ).body
