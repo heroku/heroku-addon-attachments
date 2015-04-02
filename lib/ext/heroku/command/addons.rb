@@ -296,6 +296,7 @@ module Heroku::Command
 
       requires_preauth
 
+      # FIXME: Once heroku/api#3895 is merged, we can get the single attachment by its name
       addon_attachment = api.request(
         :expects => [200, 206],
         :headers  => { "Accept" => "application/vnd.heroku+json; version=3.switzerland" },
