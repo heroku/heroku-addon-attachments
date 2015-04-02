@@ -9,63 +9,39 @@ module Heroku::Command
 
     include Heroku::Helpers::HerokuPostgresql
 
-    # addons
+    # addons [{--all,--app APP,--resource ADDON_NAME}]
     #
     # list installed add-ons
     #
-    # --all # list add-ons across all apps in account
+    # NOTE: --all is the default unless in an application repository directory, in
+    # which case --all is inferred.
+    #
+    # --all                  # list add-ons across all apps in account
+    # --app APP              # list add-ons associated with a given app
+    # --resource ADDON_NAME  # view details about add-on and all of its attachments
+    #
+    #Examples:
+    #
+    # $ heroku addons --all
+    # $ heroku addons --app acme-inc-website
+    # $ heroku addons --resource @acme-inc-database
+    #
     def index
       validate_arguments!
       requires_preauth
 
-      base = options[:all] ? "" : "/apps/#{app}"
+      # Filters are mutually exclusive
+      error("Can not use --all with --app")      if options[:app] && options[:all]
+      error("Can not use --all with --resource") if options[:resource] && options[:all]
+      error("Can not use --app with --resource") if options[:resource] && options[:app]
 
-      addons = api.request(
-        :expects  => [200, 206],
-        :headers  => { "Accept" => "application/vnd.heroku+json; version=3.switzerland" },
-        :method   => :get,
-        :path     => "#{base}/addons"
-      ).body
-
-      attachments = api.request(
-        :expects  => [200, 206],
-        :headers  => { "Accept" => "application/vnd.heroku+json; version=3.switzerland" },
-        :method   => :get,
-        :path     => "#{base}/addon-attachments"
-      ).body
-
-      attachments_by_resource = attachments.
-        group_by { |att| att["addon"]["id"] }
-
-      display_attachments = lambda do |addon|
-        attachments = attachments_by_resource[addon['id']].map do |att|
-          if addon['app']['id'] != att['app']['id']
-            "#{att['name']} (on #{att['app']['name']})"
-          else
-            att["name"]
-          end
-        end
-
-        attachments.join(', ')
-      end
-
-      if addons.empty?
-        display("#{app} has no add-ons.")
+      app = (self.app rescue nil)
+      if (resource = options[:resource])
+        show_for_resource(resource)
+      elsif app && !options[:all]
+        show_for_app(app)
       else
-        table = addons.map do |addon|
-          addon_name = addon['name'].downcase
-
-          [
-            addon['plan']['name'],
-            "@#{addon_name}",
-            (addon['app']['name'] if options[:all]),
-            display_attachments.(addon)
-          ].compact
-        end
-
-        header_scope = options[:all] ? '' : "#{app} "
-        styled_header("#{header_scope}Add-on Resources")
-        styled_array(table)
+        show_all
       end
     end
 
@@ -124,69 +100,6 @@ module Heroku::Command
       end
 
       display_table(plans, %w[default name human_name price], [nil, 'Slug', 'Name', 'Price'])
-    end
-
-    # addons:attachments
-    #
-    # list add-on attachments
-    #
-    # --all # list attachments across all apps in account
-    def attachments
-      begin
-        # raise as though no app specified to fall through to rescue
-        if options[:all]
-          raise Heroku::Command::CommandFailed.new("No app specified")
-        end
-        # will raise if no app specified
-        attachments = api.request(
-          :expects  => [200, 206],
-          :headers  => { "Accept" => "application/vnd.heroku+json; version=3.switzerland" },
-          :method   => :get,
-          :path     => "/apps/#{app}/addon-attachments"
-        ).body
-        if attachments.empty?
-          display("There are no add-on attachments for this app.")
-        else
-          attachments_by_resource = {}
-          attachments.each do |attachment|
-            addon_name = attachment["addon"]["name"].downcase
-
-            attachments_by_resource["#{addon_name}"] ||= { "names" => [], "app" => attachment["addon"]["app"]["name"] }
-            attachments_by_resource["#{addon_name}"]["names"] << attachment['name']
-          end
-          styled_header("#{app} Add-on Attachments")
-          styled_array(attachments_by_resource.map do |resource, info|
-            [
-              info["names"].join(', '),
-              "@#{resource}",
-              "#{info["app"]}",
-            ]
-          end)
-        end
-      rescue Heroku::Command::CommandFailed => error
-        if error.message =~ /No app specified/
-          attachments = api.request(
-            :expects  => [200, 206],
-            :headers  => { "Accept" => "application/vnd.heroku+json; version=3.switzerland" },
-            :method   => :get,
-            :path     => "/addon-attachments"
-          ).body
-          if attachments.empty?
-            display("You have no add-on attachments.")
-          else
-            styled_header("Add-on Attachments")
-            styled_array(attachments.map do |attachment|
-              [
-                attachment['app']['name'],
-                attachment['name'],
-                "@#{attachment['addon']['name'].downcase}"
-              ]
-            end.sort)
-          end
-        else
-          raise error
-        end
-      end
     end
 
     # addons:create PLAN
@@ -313,12 +226,7 @@ module Heroku::Command
       requires_preauth
 
       # FIXME: Once heroku/api#3895 is merged, we can get the single attachment by its name
-      addon_attachment = api.request(
-        :expects => [200, 206],
-        :headers  => { "Accept" => "application/vnd.heroku+json; version=3.switzerland" },
-        :method   => :get,
-        :path     => "/apps/#{app}/addon-attachments"
-      ).body.detect do |attachment|
+      addon_attachment = get_attachments(:app => app).detect do |attachment|
         attachment['name'] == attachment_name
       end
 
@@ -358,12 +266,7 @@ module Heroku::Command
       return unless confirm_command
 
       addon = addon.dup.sub('@', '')
-      addon_attachments = api.request(
-        :expects => [200, 206],
-        :headers  => { "Accept" => "application/vnd.heroku+json; version=3.switzerland" },
-        :method   => :get,
-        :path     => "/apps/#{app}/addon-attachments"
-      ).body.keep_if do |attachment|
+      addon_attachments = get_attachments(:app => app).keep_if do |attachment|
         attachment['addon']['name'] == addon
       end
       config_vars = addon_attachments.map { |attachment| attachment['name'] }
@@ -488,6 +391,165 @@ module Heroku::Command
 
     private
 
+    # Shows details about and attachments for a specified resource. For example:
+    #
+    # $ heroku addons --resource practicing-nobly-1495
+    # === Resource Info
+    # Name:        practicing-nobly-1495
+    # Plan:        heroku-postgresql:premium-yanari
+    # Billing App: addons-reports
+    # Price:       $200.00/month
+    #
+    # === Attachments
+    # App             Name
+    # --------------  ------------------------
+    # addons          ADDONS_REPORTS
+    # addons-reports  DATABASE
+    # addons-reports  HEROKU_POSTGRESQL_SILVER
+    def show_for_resource(identifier)
+      styled_header("Resource Info")
+
+      resource = api.request(
+        :expects  => [200, 206],
+        :headers  => {
+          'Accept'           => 'application/vnd.heroku+json; version=3.switzerland',
+          'Accept-Expansion' => 'plan'
+        },
+        :method   => :get,
+        :path     => "/addons/#{identifier}"
+      ).body
+
+      styled_hash({
+        'Name'        => resource['name'],
+        'Plan'        => resource['plan']['name'],
+        'Billing App' => resource['app']['name'],
+        'Price'       => format_price(resource['plan']['price'])
+      }, ['Name', 'Plan', 'Billing App', 'Price'])
+
+      display("") # separate sections
+
+      styled_header("Attachments")
+      display_attachments(get_attachments(:resource => identifier), ['App', 'Name'])
+    end
+
+    # Shows all add-ons owned by and attachments attached to the provided app. For example:
+    #
+    # === Add-on Resources for bjeanes
+    # Plan                     Name                    Price
+    # -----------------------  ----------------------  -----
+    # heroku-postgresql:dev    budding-busily-2230     free
+    # memcachier-staging:test  sighing-ably-6278       free
+    # memcachier-staging:test  rolling-carefully-8506  free
+    # newrelic:wayne           unwinding-kindly-4330   free
+    # pgbackups:plus           pgbackups-8071074       free
+    #
+    # === Add-on Attachments for bjeanes
+    # Name                      Add-on                  Billing App
+    # ------------------------  ----------------------  -----------
+    # DATABASE                  budding-busily-2230     bjeanes
+    # HEROKU_POSTGRESQL_VIOLET  budding-busily-2230     bjeanes
+    # MEMCACHE                  sighing-ably-6278       bjeanes
+    # MEMCACHIER_STAGING        rolling-carefully-8506  bjeanes
+    # NEWRELIC                  unwinding-kindly-4330   bjeanes
+    # PGBACKUPS                 pgbackups-8071074       bjeanes
+    def show_for_app(app)
+      styled_header("Resources for #{app}")
+
+      addons = api.request(
+        :expects  => [200, 206],
+        :headers  => {
+          'Accept'           => 'application/vnd.heroku+json; version=3.switzerland',
+          'Accept-Expansion' => 'plan'
+        },
+        :method   => :get,
+        :path     => "/apps/#{app}/addons"
+      ).body.select { |addon| addon['app']['name'] == app }
+
+      display_addons(addons, %w[Plan Name Price])
+
+      display('') # separate sections
+
+      styled_header("Attachments for #{app}")
+      display_attachments(get_attachments(:app => app), ['Name', 'Add-on', 'Billing App'])
+    end
+
+    # Shows a table of all add-ons on the account. For example:
+    #
+    # === Add-on Resources
+    # Plan                     Name                         Billing App     Price
+    # -----------------------  ---------------------------  --------------  ------------
+    # bugsnag:sagittaron       bugsnag-9174150              addons          $9.00/month
+    # deployhooks:hipchat      deployhooks-hipchat-9852225  addons-staging  free
+    # heroku-postgresql:crane  advising-fairly-3183         ion-bo          $50.00/month
+    # newrelic:wayne           unwinding-kindly-4330        bjeanes         free
+    def show_all
+      styled_header('Resources')
+
+      addons = api.request(
+        :expects  => [200, 206],
+        :headers  => {
+          'Accept'           => 'application/vnd.heroku+json; version=3.switzerland',
+          'Accept-Expansion' => 'plan'
+        },
+        :method   => :get,
+        :path     => '/addons'
+      ).body
+
+      display_addons(addons, ['Plan', 'Name', 'Billed to', 'Price'])
+    end
+
+    def display_attachments(attachments, fields)
+      if attachments.empty?
+        display('There are no attachments.')
+      else
+        table = attachments.map do |attachment|
+          {
+            'Name'        => attachment['name'],
+            # 'Service'     => attachment['addon_service']['name'],
+            'Add-on'      => attachment['addon']['name'],
+            'Billing App' => attachment['addon']['app']['name'],
+            'App'         => attachment['app']['name']
+          }
+        end.sort_by { |addon| fields.map { |f| addon[f] } }
+
+        display_table(table, fields, fields)
+      end
+    end
+
+    def display_addons(addons, fields)
+      if addons.empty?
+        display('There are no add-ons.')
+      else
+        table = addons.map do |addon|
+          {
+            'Plan'      => addon['plan']['name'],
+            'Name'      => addon['name'],
+            'Billed to' => addon['app']['name'],
+            'Price'     => format_price(addon['plan']['price'])
+          }
+        end.sort_by { |addon| fields.map { |f| addon[f] } }
+
+        display_table(table, fields, fields)
+      end
+    end
+
+    def get_attachments(options = {})
+      path = if resource = options[:resource]
+        "/addons/#{resource}/addon-attachments"
+      elsif app = options[:app]
+        "/apps/#{app}/addon-attachments"
+      else
+        "/addon-attachments"
+      end
+
+      api.request(
+        :expects  => [200, 206],
+        :headers  => { "Accept" => "application/vnd.heroku+json; version=3.switzerland" },
+        :method   => :get,
+        :path     => path
+      ).body
+    end
+
     def change_plan(direction)
       addon_name, plan = args.shift, args.shift
 
@@ -554,6 +616,14 @@ module Heroku::Command
 
     def addon_docs_url(addon)
       "https://devcenter.#{heroku.host}/articles/#{addon.split(':').first}"
+    end
+
+    def format_price(price)
+      if price['cents'] == 0
+        'free'
+      else
+        '$%.2f/%s' % [(price['cents'] / 100.0), price['unit']]
+      end
     end
   end
 end
