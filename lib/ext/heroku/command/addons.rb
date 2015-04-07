@@ -2,6 +2,7 @@ require "heroku/command/base"
 require "heroku/helpers/heroku_postgresql"
 require "ext/heroku/helpers/addons/api"
 require "ext/heroku/helpers/addons/display"
+require "ext/heroku/helpers/addons/resolve"
 
 module Heroku::Command
 
@@ -12,6 +13,7 @@ module Heroku::Command
     include Heroku::Helpers::HerokuPostgresql
     include Heroku::Helpers::Addons::API
     include Heroku::Helpers::Addons::Display
+    include Heroku::Helpers::Addons::Resolve
 
     # addons [{--all,--app APP,--resource ADDON_NAME}]
     #
@@ -201,7 +203,7 @@ module Heroku::Command
         action("Finding add-on from service #{service} on app #{app}") do
           # resolve with the service only, because the user has passed in the
           # *intended* plan, not the current plan.
-          addon = resolve_addon(app, service)
+          addon = resolve_addon!(service)
           addon_name = addon['name']
         end
         display "Found #{addon_name} (#{addon['plan']['name']}) on #{app}."
@@ -352,69 +354,12 @@ module Heroku::Command
       end
       validate_arguments!
 
-      addons = get_addons(:app => app)
-
-      # When passed the @-name (@whatever-foo-1234)
-      matches = addons.select { |a| a["name"] =~ /@?#{addon}/ }
-
-      # When passed the service name and plan (heroku-postgresql:hobby-dev)
-      if matches.empty?
-        matches = addons.select { |a| a["plan"]["name"] == addon }
-      end
-
-      # When passed the service name (heroku-postgresql)
-      if matches.empty?
-        matches = addons.select { |a| a["addon_service"]["name"] == addon }
-      end
-
-      case matches.length
-      when 0 then
-        addon_names = get_addons.map { |a| a["name"] }
-
-        if addon_names.any? {|name| name =~ /^#{addon}/}
-          error("Add-on not installed: #{addon}.")
-        else
-          error([
-            "`#{addon}` is not a heroku add-on.",
-            suggestion(addon, addon_names + addon_names.map {|name| name.split(':').first}.uniq),
-            "See `heroku addons:list` for all available add-ons."
-          ].compact.join("\n"))
-        end
-      when 1 then
-        addon_to_open = matches.first
-        launchy("Opening #{addon_to_open["addon_service"]["name"]} (#{addon_to_open["name"]}) for #{app}", addon_to_open["web_url"])
-      else
-        message         = "Ambiguous add-on name. Perhaps you meant one of the following: "
-        suggestions     = matches[0...-1].map { |a| "`#{a["name"]}`" }.join(", ")
-        last_suggestion = "`#{matches.last["name"]}`"
-        error([message, suggestions, " or ", last_suggestion].join)
-      end
+      addon = resolve_addon!(addon)
+      service = addon['addon_service']['name']
+      launchy("Opening #{service} (#{addon['name']}) for #{addon['app']['name']}", addon["web_url"])
     end
 
     private
-
-    def resolve_addon(app_name, service_plan_specifier)
-      service_name, plan_name = service_plan_specifier.split(':')
-
-      addons = get_addons(:app => app)
-
-      addons.select! do |addon|
-        addon['addon_service']['name'] == service_name &&
-          (plan_name.nil? || addon['plan']['name'] == plan_name) &&
-          # the /apps/:id/addons endpoint can return more than just those owned
-          # by the app, so filter:
-          addon['app']['name'] == app_name
-      end
-
-      case addons.count
-      when 1
-        return addons[0]
-      when 0
-        error("No #{service_name} add-on on app #{app_name} found")
-      else
-        error("Ambiguous add-on identifier #{service_plan_specifier}\nList your add-ons with `heroku addons`")
-      end
-    end
 
     def addon_docs_url(addon)
       "https://devcenter.#{heroku.host}/articles/#{addon.split(':').first}"
