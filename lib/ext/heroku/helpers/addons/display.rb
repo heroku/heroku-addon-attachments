@@ -23,7 +23,7 @@ module Heroku::Helpers
       def show_for_resource(identifier)
         styled_header("Resource Info")
 
-        resource = get_addon!(identifier)
+        resource = resolve_addon!(identifier)
 
         styled_hash({
           'Name'        => resource['name'],

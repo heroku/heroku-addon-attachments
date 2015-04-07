@@ -147,22 +147,22 @@ module Heroku::Command
       unless addon = args.shift
         error("Usage: heroku addons:attach ADDON\nMust specify ADDON to attach.")
       end
-      addon = addon.dup.sub('@', '')
+      addon = resolve_addon!(addon)
 
       requires_preauth
 
       attachment_name = options[:as]
 
       msg = attachment_name ?
-        "Attaching #{addon} as #{attachment_name} to #{app}" :
-        "Attaching #{addon} to #{app}"
+        "Attaching #{addon['name']} as #{attachment_name} to #{app}" :
+        "Attaching #{addon['name']} to #{app}"
 
       display("#{msg}... ", false)
 
       response = api.request(
         :body     => json_encode({
           "app"     => {"name" => app},
-          "addon"   => {"name" => addon},
+          "addon"   => {"name" => addon['name']},
           "confirm" => options[:confirm],
           "name"    => attachment_name
         }),
@@ -242,16 +242,15 @@ module Heroku::Command
     def detach
       attachment_name = args.shift
       raise CommandFailed.new("Missing add-on attachment name") if attachment_name.nil?
-
       requires_preauth
 
-      addon_attachment = get_attachment(attachment_name, :app => app)
+      addon_attachment = resolve_attachment!(attachment_name)
 
-      unless addon_attachment
-        error("Add-on attachment not found")
-      end
+      attachment_name = addon_attachment['name'] # in case a UUID was passed in
+      addon_name      = addon_attachment['addon']['name']
+      app             = addon_attachment['app']['name']
 
-      action("Removing #{attachment_name} attachment to #{addon_attachment['addon']['name']} from #{app}") do
+      action("Removing #{attachment_name} attachment to #{addon_name} from #{app}") do
         api.request(
           :expects  => 200..300,
           :headers  => { "Accept" => "application/vnd.heroku+json; version=3.switzerland" },
@@ -259,7 +258,7 @@ module Heroku::Command
           :path     => "/addon-attachments/#{addon_attachment['id']}"
         ).body
       end
-      action("Unsetting #{attachment_name}_URL and restarting #{app}") do
+      action("Unsetting #{attachment_name} vars and restarting #{app}") do
         @status = api.get_release(app, 'current').body['name']
       end
     end
@@ -282,18 +281,18 @@ module Heroku::Command
 
       return unless confirm_command
 
-      addon = addon.dup.sub('@', '')
-      addon_attachments = get_attachments(:resource => addon)
+      addon = resolve_addon!(addon)
+      addon_attachments = get_attachments(:resource => addon['id'])
 
       addon_attachments.each do |attachment|
         name = attachment['name']
         app = attachment['app']['name']
-        action("Removing #{addon} as #{name} from #{app}") {}
+        action("Removing #{addon['name']} as #{name} from #{app}") {}
         action("Unsetting #{name} vars and restarting #{app}") {}
       end
 
       @status = api.get_release(app, 'current').body['name']
-      action("Destroying #{addon} on #{app}") do
+      action("Destroying #{addon['name']} on #{app}") do
         api.request(
           :body     => json_encode({
             "force" => options[:force],
@@ -301,7 +300,7 @@ module Heroku::Command
           :expects  => 200..300,
           :headers  => { "Accept" => "application/vnd.heroku+json; version=3.switzerland" },
           :method   => :delete,
-          :path     => "/apps/#{app}/addons/#{addon}"
+          :path     => "/apps/#{app}/addons/#{addon['id']}"
         )
       end
     end
@@ -314,33 +313,33 @@ module Heroku::Command
     # open an add-on's documentation in your browser
     #
     def docs
-      unless addon = shift_argument
+      unless identifier = shift_argument
         error("Usage: heroku addons:docs ADDON\nMust specify ADDON to open docs for.")
       end
       validate_arguments!
 
-      addon_names = api.get_addons.body.map {|a| a['name']}
-      addon_types = addon_names.map {|name| name.split(':').first}.uniq
-
-      name_matches = addon_names.select {|name| name =~ /^#{addon}/}
-      type_matches = addon_types.select {|name| name =~ /^#{addon}/}
-
-      if name_matches.include?(addon) || type_matches.include?(addon)
-        type_matches = [addon]
-      end
-
-      case type_matches.length
-      when 0 then
-        error([
-          "`#{addon}` is not a heroku add-on.",
-          suggestion(addon, addon_names + addon_types),
-          "See `heroku addons:list` for all available add-ons."
-        ].compact.join("\n"))
-      when 1
-        addon_type = type_matches.first
-        launchy("Opening #{addon_type} docs", addon_docs_url(addon_type))
+      # If it looks like a plan, optimistically open docs, otherwise try to
+      # lookup a corresponding add-on and open the docs for its service.
+      if identifier.include?(':')
+        service = identifier.split(':')[0]
+        launchy("Opening #{service} docs", addon_docs_url(service))
       else
-        error("Ambiguous add-on name: #{addon}\nPerhaps you meant #{name_matches[0...-1].map {|match| "`#{match}`"}.join(', ')} or `#{name_matches.last}`.\n")
+        # searching by any number of things
+        matches = resolve_addon(identifier)
+        services = matches.map { |m| m['addon_service']['name'] }.uniq
+
+        case services.count
+        when 0
+          # Optimistically open docs for whatever they passed in
+          launchy("Opening #{identifier} docs", addon_docs_url(identifier))
+        when 1
+          service = services.first
+          launchy("Opening #{service} docs", addon_docs_url(service))
+        else
+          error("Multiple add-ons match #{identifier.inspect}.\n" +
+                "Use the name of one of the add-on resources:\n\n" +
+                matches.map { |a| "- #{a['name']} (#{a['addon_service']['name']})" }.join("\n"))
+        end
       end
     end
 
