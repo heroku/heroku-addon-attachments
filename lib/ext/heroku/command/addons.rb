@@ -60,7 +60,7 @@ module Heroku::Command
         :path     => "/addon-services"
       ).body
 
-      display_table(addon_services, %w[name human_name], %w[Slug Name])
+      display_table(addon_services, %w[name human_name state], %w[Slug Name State])
       display "\nSee plans with `heroku addons:plans SERVICE`"
     end
 
