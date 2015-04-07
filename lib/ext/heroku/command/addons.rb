@@ -1,5 +1,6 @@
 require "heroku/command/base"
 require "heroku/helpers/heroku_postgresql"
+require "ext/heroku/helpers/addons/api"
 
 module Heroku::Command
 
@@ -8,6 +9,7 @@ module Heroku::Command
   class Addons < Base
 
     include Heroku::Helpers::HerokuPostgresql
+    include Heroku::Helpers::Addons::API
 
     # addons [{--all,--app APP,--resource ADDON_NAME}]
     #
@@ -53,14 +55,7 @@ module Heroku::Command
         deprecate("`heroku #{current_command}` has been deprecated. Please use `heroku addons:services` instead.")
       end
 
-      addon_services = api.request(
-        :expects  => [200, 206],
-        :headers  => { "Accept" => "application/vnd.heroku+json; version=3" },
-        :method   => :get,
-        :path     => "/addon-services"
-      ).body
-
-      display_table(addon_services, %w[name human_name state], %w[Slug Name State])
+      display_table(get_services, %w[name human_name state], %w[Slug Name State])
       display "\nSee plans with `heroku addons:plans SERVICE`"
     end
 
@@ -74,21 +69,10 @@ module Heroku::Command
       service = args.shift
       raise CommandFailed.new("Missing add-on service") if service.nil?
 
-      service = api.request(
-        :expects  => [200, 206],
-        :headers  => { "Accept" => "application/vnd.heroku+json; version=3" },
-        :method   => :get,
-        :path     => "/addon-services/#{service}"
-      ).body
-
+      service = get_service!(service)
       display_header("#{service['human_name']} Plans")
 
-      plans = api.request(
-        :expects  => [200, 206],
-        :headers  => { "Accept" => "application/vnd.heroku+json; version=3" },
-        :method   => :get,
-        :path     => "/addon-services/#{service['id']}/plans"
-      ).body
+      plans = get_plans(:service => service['id'])
 
       plans = plans.sort_by { |p| [(!p['default']).to_s, p['price']['cents']] }.map do |plan|
         {
@@ -121,7 +105,7 @@ module Heroku::Command
       raise CommandFailed.new("Missing add-on name") if addon.nil? || %w{--fork --follow --rollback}.include?(addon)
       config = parse_options(args)
 
-      addon = api.request(
+      addon = request(
         :body     => json_encode({
           "attachment" => { "name" => options[:as] },
           "config"     => config,
@@ -130,10 +114,9 @@ module Heroku::Command
           "plan"       => { "name" => addon }
         }),
         :expects  => 201,
-        :headers  => { "Accept" => "application/vnd.heroku+json; version=3.switzerland" },
         :method   => :post,
         :path     => "/apps/#{app}/addons"
-      ).body
+      )
 
       action("Creating #{addon['name'].downcase}") {}
       action("Adding #{addon['name'].downcase} to #{app}") {}
@@ -225,10 +208,7 @@ module Heroku::Command
 
       requires_preauth
 
-      # FIXME: Once heroku/api#3895 is merged, we can get the single attachment by its name
-      addon_attachment = get_attachments(:app => app).detect do |attachment|
-        attachment['name'] == attachment_name
-      end
+      addon_attachment = get_attachment(attachment_name, :app => app)
 
       unless addon_attachment
         error("Add-on attachment not found")
@@ -266,14 +246,13 @@ module Heroku::Command
       return unless confirm_command
 
       addon = addon.dup.sub('@', '')
-      addon_attachments = get_attachments(:app => app).keep_if do |attachment|
-        attachment['addon']['name'] == addon
-      end
-      config_vars = addon_attachments.map { |attachment| attachment['name'] }
+      addon_attachments = get_attachments(:resource => addon)
 
-      config_vars.each do |var_name|
-        action("Removing #{addon} as #{var_name} from #{app}") {}
-        action("Unsetting #{var_name} and restarting #{app}") {}
+      addon_attachments.each do |attachment|
+        name = attachment['name']
+        app = attachment['app']['name']
+        action("Removing #{addon} as #{name} from #{app}") {}
+        action("Unsetting #{name} vars and restarting #{app}") {}
       end
 
       @status = api.get_release(app, 'current').body['name']
@@ -338,12 +317,7 @@ module Heroku::Command
       end
       validate_arguments!
 
-      addons = api.request(
-        expects: 200..300,
-        headers: { "Accept" => "application/vnd.heroku+json; version=3.switzerland" },
-        method:  :get,
-        path:    "/apps/#{app}/addons"
-      ).body
+      addons = get_addons(:app => app)
 
       # When passed the @-name (@whatever-foo-1234)
       matches = addons.select { |a| a["name"] =~ /@?#{addon}/ }
@@ -360,14 +334,7 @@ module Heroku::Command
 
       case matches.length
       when 0 then
-        all_addons = api.request(
-          expects: 200..300,
-          headers: { "Accept" => "application/vnd.heroku+json; version=3.switzerland" },
-          method:  :get,
-          path:    "/addons"
-        ).body
-
-        addon_names = all_addons.map { |a| a["name"] }
+        addon_names = get_addons.map { |a| a["name"] }
 
         if addon_names.any? {|name| name =~ /^#{addon}/}
           error("Add-on not installed: #{addon}.")
@@ -409,15 +376,7 @@ module Heroku::Command
     def show_for_resource(identifier)
       styled_header("Resource Info")
 
-      resource = api.request(
-        :expects  => [200, 206],
-        :headers  => {
-          'Accept'           => 'application/vnd.heroku+json; version=3.switzerland',
-          'Accept-Expansion' => 'plan'
-        },
-        :method   => :get,
-        :path     => "/addons/#{identifier}"
-      ).body
+      resource = get_addon(identifier)
 
       styled_hash({
         'Name'        => resource['name'],
@@ -455,15 +414,8 @@ module Heroku::Command
     def show_for_app(app)
       styled_header("Resources for #{app}")
 
-      addons = api.request(
-        :expects  => [200, 206],
-        :headers  => {
-          'Accept'           => 'application/vnd.heroku+json; version=3.switzerland',
-          'Accept-Expansion' => 'plan'
-        },
-        :method   => :get,
-        :path     => "/apps/#{app}/addons"
-      ).body.select { |addon| addon['app']['name'] == app }
+      addons = get_addons(:app => app).
+        select { |addon| addon['app']['name'] == app }
 
       display_addons(addons, %w[Plan Name Price])
 
@@ -485,17 +437,7 @@ module Heroku::Command
     def show_all
       styled_header('Resources')
 
-      addons = api.request(
-        :expects  => [200, 206],
-        :headers  => {
-          'Accept'           => 'application/vnd.heroku+json; version=3.switzerland',
-          'Accept-Expansion' => 'plan'
-        },
-        :method   => :get,
-        :path     => '/addons'
-      ).body
-
-      display_addons(addons, ['Plan', 'Name', 'Billed to', 'Price'])
+      display_addons(get_addons, ['Plan', 'Name', 'Billed to', 'Price'])
     end
 
     def display_attachments(attachments, fields)
@@ -531,23 +473,6 @@ module Heroku::Command
 
         display_table(table, fields, fields)
       end
-    end
-
-    def get_attachments(options = {})
-      path = if resource = options[:resource]
-        "/addons/#{resource}/addon-attachments"
-      elsif app = options[:app]
-        "/apps/#{app}/addon-attachments"
-      else
-        "/addon-attachments"
-      end
-
-      api.request(
-        :expects  => [200, 206],
-        :headers  => { "Accept" => "application/vnd.heroku+json; version=3.switzerland" },
-        :method   => :get,
-        :path     => path
-      ).body
     end
 
     def change_plan(direction)
@@ -589,12 +514,7 @@ module Heroku::Command
     def resolve_addon(app_name, service_plan_specifier)
       service_name, plan_name = service_plan_specifier.split(':')
 
-      addons = api.request(
-        :expects  => [200, 206],
-        :headers  => { "Accept" => "application/vnd.heroku+json; version=3.switzerland" },
-        :method   => :get,
-        :path     => "/apps/#{app}/addons"
-      ).body
+      addons = get_addons(:app => app)
 
       addons.select! do |addon|
         addon['addon_service']['name'] == service_name &&
