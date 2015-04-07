@@ -1,6 +1,7 @@
 require "heroku/command/base"
 require "heroku/helpers/heroku_postgresql"
 require "ext/heroku/helpers/addons/api"
+require "ext/heroku/helpers/addons/display"
 
 module Heroku::Command
 
@@ -10,6 +11,7 @@ module Heroku::Command
 
     include Heroku::Helpers::HerokuPostgresql
     include Heroku::Helpers::Addons::API
+    include Heroku::Helpers::Addons::Display
 
     # addons [{--all,--app APP,--resource ADDON_NAME}]
     #
@@ -79,7 +81,7 @@ module Heroku::Command
           "default"    => ('default' if plan['default']),
           "name"       => plan["name"],
           "human_name" => plan["human_name"],
-          "price"      => "$%.2f/%s" % [(plan["price"]["cents"] / 100.0), plan["price"]["unit"]],
+          "price"      => format_price(plan["price"])
         }
       end
 
@@ -536,14 +538,6 @@ module Heroku::Command
 
     def addon_docs_url(addon)
       "https://devcenter.#{heroku.host}/articles/#{addon.split(':').first}"
-    end
-
-    def format_price(price)
-      if price['cents'] == 0
-        'free'
-      else
-        '$%.2f/%s' % [(price['cents'] / 100.0), price['unit']]
-      end
     end
   end
 end
