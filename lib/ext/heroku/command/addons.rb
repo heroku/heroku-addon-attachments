@@ -189,7 +189,40 @@ module Heroku::Command
     # upgrade an existing add-on resource to PLAN
     #
     def upgrade
-      change_plan(:upgrade)
+      addon_name, plan = args.shift, args.shift
+
+      if addon_name && !plan # If invocated as `addons:Xgrade service:plan`
+        deprecate("No add-on name specified (see `heroku help #{current_command}`)")
+
+        addon = nil
+        plan = addon_name
+        service = plan.split(':').first
+
+        action("Finding add-on from service #{service} on app #{app}") do
+          # resolve with the service only, because the user has passed in the
+          # *intended* plan, not the current plan.
+          addon = resolve_addon(app, service)
+          addon_name = addon['name']
+        end
+        display "Found #{addon_name} (#{addon['plan']['name']}) on #{app}."
+      else
+        addon_name = addon_name.sub(/^@/, '')
+      end
+
+      raise CommandFailed.new("Missing add-on plan") if plan.nil?
+      raise CommandFailed.new("Missing add-on name") if addon_name.nil?
+
+      action("Changing #{addon_name} plan to #{plan}") do
+        api.request(
+          :body     => json_encode({
+            "plan"   => { "name" => plan }
+          }),
+          :expects  => 200..300,
+          :headers  => { "Accept" => "application/vnd.heroku+json; version=3.switzerland" },
+          :method   => :patch,
+          :path     => "/apps/#{app}/addons/#{addon_name}"
+        )
+      end
     end
 
     # addons:downgrade ADDON PLAN
@@ -197,7 +230,7 @@ module Heroku::Command
     # downgrade an existing add-on resource to PLAN
     #
     def downgrade
-      change_plan(:downgrade)
+      upgrade
     end
 
     # addons:detach ATTACHMENT
@@ -359,42 +392,6 @@ module Heroku::Command
     end
 
     private
-
-    def change_plan(direction)
-      addon_name, plan = args.shift, args.shift
-
-      if addon_name && !plan # If invocated as `addons:Xgrade service:plan`
-        deprecate("No add-on name specified (see `heroku help #{current_command}`)")
-
-        addon = nil
-        plan = addon_name
-        service = plan.split(':').first
-
-        action("Finding add-on from service #{service} on app #{app}") do
-          addon = resolve_addon(app, service)
-          addon_name = addon['name']
-        end
-        display "Found #{addon_name} (#{addon['plan']['name']}) on #{app}."
-      else
-        addon_name = addon_name.sub(/^@/, '')
-      end
-
-      raise CommandFailed.new("Missing add-on plan") if plan.nil?
-      raise CommandFailed.new("Missing add-on name") if addon_name.nil?
-
-      labels = {upgrade: 'Upgrading', downgrade: 'Downgrading'}
-      action("#{labels[direction]} #{addon_name} to #{plan}") do
-        api.request(
-          :body     => json_encode({
-            "plan"   => { "name" => plan }
-          }),
-          :expects  => 200..300,
-          :headers  => { "Accept" => "application/vnd.heroku+json; version=3.switzerland" },
-          :method   => :patch,
-          :path     => "/apps/#{app}/addons/#{addon_name}"
-        )
-      end
-    end
 
     def resolve_addon(app_name, service_plan_specifier)
       service_name, plan_name = service_plan_specifier.split(':')
