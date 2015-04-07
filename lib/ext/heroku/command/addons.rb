@@ -124,8 +124,11 @@ module Heroku::Command
 
       action("Creating #{addon['name'].downcase}") {}
       action("Adding #{addon['name'].downcase} to #{app}") {}
-      action("Setting #{addon['config_vars'].join(', ')} and restarting #{app}") do
-        @status = api.get_release(app, 'current').body['name']
+
+      if addon['config_vars'].any?
+        action("Setting #{addon['config_vars'].join(', ')} and restarting #{app}") do
+          @status = api.get_release(app, 'current').body['name']
+        end
       end
 
       #display resource['provider_data']['message'] unless resource['provider_data']['message'].strip == ""
@@ -284,14 +287,6 @@ module Heroku::Command
       addon = resolve_addon!(addon)
       addon_attachments = get_attachments(:resource => addon['id'])
 
-      addon_attachments.each do |attachment|
-        name = attachment['name']
-        app = attachment['app']['name']
-        action("Removing #{addon['name']} as #{name} from #{app}") {}
-        action("Unsetting #{name} vars and restarting #{app}") {}
-      end
-
-      @status = api.get_release(app, 'current').body['name']
       action("Destroying #{addon['name']} on #{app}") do
         api.request(
           :body     => json_encode({
@@ -302,6 +297,17 @@ module Heroku::Command
           :method   => :delete,
           :path     => "/apps/#{app}/addons/#{addon['id']}"
         )
+      end
+
+      if addon['config_vars'].any? # litmus test for whether the add-on's attachments have vars
+        # For each app that had an attachment, output a message indicating that
+        # the app has been restarted any any associated vars have been removed.
+        addon_attachments.group_by { |att| att['app']['name'] }.each do |app, attachments|
+          names = attachments.map { |att| att['name'] }.join(', ')
+          action("Removing vars for #{names} from #{app} and restarting") {
+            @status = api.get_release(app, 'current').body['name']
+          }
+        end
       end
     end
 
