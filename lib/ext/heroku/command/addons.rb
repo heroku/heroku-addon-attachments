@@ -138,7 +138,7 @@ module Heroku::Command
         end
       end
 
-      display resource['provision_message'] unless resource['provision_message'].to_s.strip == ""
+      display addon['provision_message'] unless addon['provision_message'].to_s.strip == ""
 
       display("Use `heroku addons:docs #{addon['addon_service']['name']}` to view documentation.")
     end
