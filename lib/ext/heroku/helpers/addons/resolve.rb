@@ -16,7 +16,7 @@ module Heroku::Helpers
       def resolve_attachment(identifier)
         case identifier
         when UUID
-          [get_attachment(identifier)]
+          [get_attachment(identifier)].compact
         when ATTACHMENT
           app  = $1 || self.app # "app::..." or current app
           name = $2
