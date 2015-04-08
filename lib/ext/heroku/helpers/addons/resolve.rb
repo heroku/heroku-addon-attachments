@@ -10,9 +10,9 @@ module Heroku::Helpers
       RESOURCE     = /^@?([a-z][a-z0-9-]+)$/
       SERVICE_PLAN = /^(?:([a-z0-9_-]+):)?([a-z0-9_-]+)$/ # service / service:plan
 
-      # Try to find an attachment record given some String identifier.
+      # Finds attachments that match provided identifier.
       #
-      # Always returns an array of 0 or more results.
+      # Always returns an Array of 0 or more results.
       def resolve_attachment(identifier)
         case identifier
         when UUID
@@ -34,9 +34,9 @@ module Heroku::Helpers
         end
       end
 
-      # Try to find an attachment record given some String identifier.
+      # Finds a single attachment unambiguously given an identifier.
       #
-      # Returns a single result or exits with an error.
+      # Returns an attachment hash or exits with an error.
       def resolve_attachment!(identifier)
         results = resolve_attachment(identifier)
 
@@ -53,20 +53,22 @@ module Heroku::Helpers
         end
       end
 
-      # Resolve unique add-on or return error using:
+      # Finds add-ons that match provided identifier.
       #
-      # * add-on resource name (@my-db / my-db)
-      # * add-on resource UUID
-      # * attachment name (other-app::ATTACHMENT / ATTACHMENT on current app)
-      # * service name
-      # * service:plan name
+      # Supports:
+      #   * add-on resource UUID
+      #   * add-on resource name (@my-db / my-db)
+      #   * attachment name (other-app::ATTACHMENT / ATTACHMENT on current app)
+      #   * service name
+      #   * service:plan name
       #
-      # Always returns an Array with zero or matches.
+      # Always returns an Array with zero or more matches.
       def resolve_addon(identifier)
         case identifier
         when UUID
           return [get_addon(identifier)].compact
         when ATTACHMENT
+          # identifier -> Array[Attachment] -> uniq Array[Addon]
           matches = resolve_attachment(identifier)
           matches.
             map { |att| att['addon']['id'] }.
@@ -93,11 +95,9 @@ module Heroku::Helpers
             full_plan_name = [service_name, plan_name].join(':') if plan_name
 
             addons = get_addons(:app => app).select do |addon|
-              addon['addon_service']['name'] == service_name &&
-                [nil, addon['plan']['name']].include?(full_plan_name) &&
-                # the /apps/:id/addons endpoint can return more than just those owned
-                # by the app, so filter:
-                addon['app']['name'] == app
+              addon['addon_service']['name'] == service_name &&          # match service
+                [nil, addon['plan']['name']].include?(full_plan_name) && # match plan, IFF specified
+                addon['app']['name'] == app                              # /apps/:id/addons returns un-owned add-ons
             end
 
             return addons
@@ -107,7 +107,9 @@ module Heroku::Helpers
         end
       end
 
-      # Returns a single result or exits with an error.
+      # Finds a single add-on unambiguously given an identifier.
+      #
+      # Returns an add-on hash or exits with an error.
       def resolve_addon!(identifier)
         results = resolve_addon(identifier)
 
