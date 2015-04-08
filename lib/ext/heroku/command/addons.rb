@@ -117,6 +117,13 @@ module Heroku::Command
           "confirm"    => options[:confirm],
           "plan"       => { "name" => addon }
         }),
+        :headers  => {
+          # Temporary hack for getting provider messages while a cleaner
+          # endpoint is designed to communicate this data.
+          #
+          # WARNING: Do not depend on this having any effect permanently.
+          "X-Heroku-Legacy-Provider-Messages" => "true"
+        },
         :expects  => 201,
         :method   => :post,
         :path     => "/apps/#{app}/addons"
@@ -131,7 +138,7 @@ module Heroku::Command
         end
       end
 
-      #display resource['provider_data']['message'] unless resource['provider_data']['message'].strip == ""
+      display resource['provision_message'] unless resource['provision_message'].to_s.strip == ""
 
       display("Use `heroku addons:docs #{addon['addon_service']['name']}` to view documentation.")
     end
