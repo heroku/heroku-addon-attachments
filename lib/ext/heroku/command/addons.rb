@@ -15,7 +15,7 @@ module Heroku::Command
     include Heroku::Helpers::Addons::Display
     include Heroku::Helpers::Addons::Resolve
 
-    # addons [{--all,--app APP,--resource ADDON_NAME}]
+    # addons [{--all,--app APP_NAME,--resource ADDON_NAME}]
     #
     # list installed add-ons
     #
@@ -23,7 +23,7 @@ module Heroku::Command
     # which case --all is inferred.
     #
     # --all                  # list add-ons across all apps in account
-    # --app APP              # list add-ons associated with a given app
+    # --app APP_NAME         # list add-ons associated with a given app
     # --resource ADDON_NAME  # view details about add-on and all of its attachments
     #
     #Examples:
@@ -90,11 +90,11 @@ module Heroku::Command
       display_table(plans, %w[default name human_name price], [nil, 'Slug', 'Name', 'Price'])
     end
 
-    # addons:create PLAN
+    # addons:create {SERVICE,PLAN}
     #
     # create an add-on resource
     #
-    # --name NAME             # (optional) name for the resource
+    # --name ADDON_NAME       # (optional) name for the add-on resource
     # --as ATTACHMENT_NAME    # (optional) name for the initial add-on attachment
     # --confirm APP_NAME      # (optional) ovewrite existing config vars or existing add-on attachments
     #
@@ -105,8 +105,8 @@ module Heroku::Command
 
       requires_preauth
 
-      addon = args.shift
-      raise CommandFailed.new("Missing add-on name") if addon.nil? || %w{--fork --follow --rollback}.include?(addon)
+      service_plan = args.shift
+      raise CommandFailed.new("Missing requested service or plan") if service_plan.nil? || %w{--fork --follow --rollback}.include?(service_plan)
       config = parse_options(args)
 
       addon = request(
@@ -115,7 +115,7 @@ module Heroku::Command
           "config"     => config,
           "name"       => options[:name],
           "confirm"    => options[:confirm],
-          "plan"       => { "name" => addon }
+          "plan"       => { "name" => service_plan }
         }),
         :headers  => {
           # Temporary hack for getting provider messages while a cleaner
@@ -146,7 +146,7 @@ module Heroku::Command
     private :add # removes docs for non-plugin implementation
     alias_command "addons:add", "addons:create"
 
-    # addons:attach ADDON
+    # addons:attach ADDON_NAME
     #
     # attach add-on resource to an app
     #
@@ -154,10 +154,10 @@ module Heroku::Command
     # --confirm APP_NAME    # overwrite existing add-on attachment with same name
     #
     def attach
-      unless addon = args.shift
-        error("Usage: heroku addons:attach ADDON\nMust specify ADDON to attach.")
+      unless addon_name = args.shift
+        error("Usage: heroku addons:attach ADDON_NAME\nMust specify add-on resource to attach.")
       end
-      addon = resolve_addon!(addon)
+      addon = resolve_addon!(addon_name)
 
       requires_preauth
 
@@ -196,7 +196,7 @@ module Heroku::Command
       end
     end
 
-    # addons:upgrade ADDON PLAN
+    # addons:upgrade ADDON_NAME PLAN
     #
     # upgrade an existing add-on resource to PLAN
     #
@@ -237,7 +237,7 @@ module Heroku::Command
       end
     end
 
-    # addons:downgrade ADDON PLAN
+    # addons:downgrade ADDON_NAME PLAN
     #
     # downgrade an existing add-on resource to PLAN
     #
@@ -245,7 +245,7 @@ module Heroku::Command
       upgrade
     end
 
-    # addons:detach ATTACHMENT
+    # addons:detach ATTACHMENT_NAME
     #
     # detach add-on resource from an app
     #
@@ -273,7 +273,7 @@ module Heroku::Command
       end
     end
 
-    # addons:destroy ADDON
+    # addons:destroy ADDON_NAME
     #
     # destroy an add-on resources
     #
@@ -286,12 +286,12 @@ module Heroku::Command
 
       requires_preauth
 
-      addon = args.shift
-      raise CommandFailed.new("Missing add-on name") if addon.nil?
+      addon_name = args.shift
+      raise CommandFailed.new("Missing add-on name") if addon_name.nil?
 
       return unless confirm_command
 
-      addon = resolve_addon!(addon)
+      addon = resolve_addon!(addon_name)
       addon_attachments = get_attachments(:resource => addon['id'])
 
       action("Destroying #{addon['name']} on #{app}") do
@@ -321,7 +321,7 @@ module Heroku::Command
     private :remove # removes docs for non-plugin implementation
     alias_command "addons:remove", "addons:destroy"
 
-    # addons:docs ADDON
+    # addons:docs ADDON_NAME
     #
     # open an add-on's documentation in your browser
     #
@@ -356,7 +356,7 @@ module Heroku::Command
       end
     end
 
-    # addons:open ADDON
+    # addons:open ADDON_NAME
     #
     # open an add-on's dashboard in your browser
     #
