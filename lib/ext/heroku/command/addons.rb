@@ -277,7 +277,7 @@ module Heroku::Command
     #
     # destroy an add-on resources
     #
-    # -f, --force # allow destruction even if this in not the final attachment
+    # -f, --force # allow destruction even if add-on is attached to other apps
     #
     def destroy
       if current_command == "addons:remove"
@@ -289,12 +289,13 @@ module Heroku::Command
       addon_name = args.shift
       raise CommandFailed.new("Missing add-on name") if addon_name.nil?
 
-      return unless confirm_command
-
       addon = resolve_addon!(addon_name)
+      app   = addon['app']
+      return unless confirm_command(app['name'])
+
       addon_attachments = get_attachments(:resource => addon['id'])
 
-      action("Destroying #{addon['name']} on #{app}") do
+      action("Destroying #{addon['name']} on #{app['name']}") do
         api.request(
           :body     => json_encode({
             "force" => options[:force],
@@ -302,7 +303,7 @@ module Heroku::Command
           :expects  => 200..300,
           :headers  => { "Accept" => "application/vnd.heroku+json; version=3.switzerland" },
           :method   => :delete,
-          :path     => "/apps/#{app}/addons/#{addon['id']}"
+          :path     => "/apps/#{app['id']}/addons/#{addon['id']}"
         )
       end
 
