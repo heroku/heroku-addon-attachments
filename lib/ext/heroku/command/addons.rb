@@ -273,9 +273,9 @@ module Heroku::Command
       end
     end
 
-    # addons:destroy ADDON_NAME
+    # addons:destroy ADDON_NAME [ADDON_NAME ...]
     #
-    # destroy an add-on resources
+    # destroy add-on resources
     #
     # -f, --force # allow destruction even if add-on is attached to other apps
     #
@@ -284,37 +284,43 @@ module Heroku::Command
         deprecate("`heroku #{current_command}` has been deprecated. Please use `heroku addons:destroy` instead.")
       end
 
+      raise CommandFailed.new("Missing add-on name") if args.empty?
+
       requires_preauth
+      confirmed_apps = []
 
-      addon_name = args.shift
-      raise CommandFailed.new("Missing add-on name") if addon_name.nil?
+      while addon_name = args.shift
+        addon = resolve_addon!(addon_name)
+        app   = addon['app']
 
-      addon = resolve_addon!(addon_name)
-      app   = addon['app']
-      return unless confirm_command(app['name'])
+        unless confirmed_apps.include?(app['name'])
+          return unless confirm_command(app['name'])
+          confirmed_apps << app['name']
+        end
 
-      addon_attachments = get_attachments(:resource => addon['id'])
+        addon_attachments = get_attachments(:resource => addon['id'])
 
-      action("Destroying #{addon['name']} on #{app['name']}") do
-        api.request(
-          :body     => json_encode({
-            "force" => options[:force],
-          }),
-          :expects  => 200..300,
-          :headers  => { "Accept" => "application/vnd.heroku+json; version=3.switzerland" },
-          :method   => :delete,
-          :path     => "/apps/#{app['id']}/addons/#{addon['id']}"
-        )
-      end
+        action("Destroying #{addon['name']} on #{app['name']}") do
+          api.request(
+            :body     => json_encode({
+              "force" => options[:force],
+            }),
+            :expects  => 200..300,
+            :headers  => { "Accept" => "application/vnd.heroku+json; version=3.switzerland" },
+            :method   => :delete,
+            :path     => "/apps/#{app['id']}/addons/#{addon['id']}"
+          )
+        end
 
-      if addon['config_vars'].any? # litmus test for whether the add-on's attachments have vars
-        # For each app that had an attachment, output a message indicating that
-        # the app has been restarted any any associated vars have been removed.
-        addon_attachments.group_by { |att| att['app']['name'] }.each do |app, attachments|
-          names = attachments.map { |att| att['name'] }.join(', ')
-          action("Removing vars for #{names} from #{app} and restarting") {
-            @status = api.get_release(app, 'current').body['name']
-          }
+        if addon['config_vars'].any? # litmus test for whether the add-on's attachments have vars
+          # For each app that had an attachment, output a message indicating that
+          # the app has been restarted any any associated vars have been removed.
+          addon_attachments.group_by { |att| att['app']['name'] }.each do |app, attachments|
+            names = attachments.map { |att| att['name'] }.join(', ')
+            action("Removing vars for #{names} from #{app} and restarting") {
+              @status = api.get_release(app, 'current').body['name']
+            }
+          end
         end
       end
     end
