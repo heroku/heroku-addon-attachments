@@ -3,16 +3,8 @@ heroku-addon-attachments
 
 plugin to provide attachable add-ons functionality
 
-## Installation
+## Deprecated
 
-```bash
-$ heroku plugins:install git@github.com:heroku/heroku-addon-attachments.git
-````
+This plugin has been merged into the [Heroku Toolbelt](https://github.com/heroku/heroku).
 
-## Usage
-
-For usage see:
-
-```bash
-$ heroku help addons
-```
+The original plugin code is reachable with the [`merged-plugin` tag](https://github.com/heroku/heroku-addon-attachments/tree/merged-plugin).

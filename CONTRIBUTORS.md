@@ -1,1 +1,0 @@
-* Wesley Beary <geemus+github@gmail.com>
